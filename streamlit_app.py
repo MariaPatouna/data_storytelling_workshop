@@ -47,42 +47,98 @@ st.markdown(
 # -------------------------------------------------------------------
 np.random.seed(42)
 
+# Actual accelerators
 ACCELERATORS = [
-    "Barnsley – AI & Children’s Services",
-    "Northumberland – Best Start in Life",
-    "Kirklees – Housing & Complex Needs",
-    "Pioneer X – Community Health",
+    "Best Start in Life (BSIL) x Northumberland",
+    "Best Start in Life (BSIL) x Manchester",
+    "Neighbourhood health x Plymouth",
+    "Neighbourhood health x Liverpool",
+    "Neighbourhood health x Essex",
+    "Economic inactivity x Wakefield",
+    "Violence Against Women and Girls (VAWG) x London",
+    "SEND transitions x Sandwell",
+    "SEND transition x Nottingham",
+    "AI at the frontline x Barnsley",
 ]
 
-SURVEY_DIMENSIONS = ["Learning routines", "User-centred design", "Collaboration", "Use of data"]
 SURVEY_WAVES = ["Baseline", "Midline", "Endline"]
 
-OUTCOMES = ["Engagement", "Service take-up", "Sustained participation", "Wellbeing index"]
+# Survey umbrella categories and modules
+SURVEY_STRUCTURE = {
+    "Organisational context": [
+        "Mission orientation",
+        "Organisational culture",
+        "Psychological safety",
+    ],
+    "Capability": [
+        "Evaluative capability",
+        "Adaptive capability & responsiveness",
+        "Decision-making capability",
+        "Relational capability",
+    ],
+    "Capacity": [
+        "Resource availability",
+        "Resource efficiency",
+        "Funding & financial investment",
+        "Digital infrastructure",
+        "Working in the open",
+    ],
+}
 
-QUAL_THEMES = [
-    "Joined-up working",
-    "Trust with partners",
-    "Staff capability",
-    "Data use in practice",
-    "Barriers & constraints",
+OUTCOMES = ["Outcome 1", "Outcome 2", "Outcome 3", "Outcome 4"]
+
+QUAL_DOC_GROUPS = [
+    "Interviews",
+    "Weeknotes",
+    "Meeting notes",
+    "Observations",
+    "Programme documents",
+]
+
+QUAL_PHASES = [
+    "Set-up & inception",
+    "Early delivery",
+    "Mid-programme adaptation",
+    "Late programme / scaling",
+]
+
+QUAL_LEVELS = [
+    "Programme",
+    "Accelerator",
+    "Central government",
+    "Local government",
+    "Delivery partners",
+]
+
+QUAL_THEMATIC_GROUPS = [
+    "TLG Practices",
+    "Enablers",
+    "Barriers",
+    "Mechanisms of change",
+    "Outcomes",
+    "Sustainability & scaling",
+    "Governance & partnership",
+    "Contextual factors",
 ]
 
 # ---- Survey data (dummy, 0–100) ----------------------------------
 survey_rows = []
 for acc in ACCELERATORS:
-    base = np.random.uniform(45, 65)
-    for dim in SURVEY_DIMENSIONS:
-        drift = np.random.uniform(-3, 8)  # some improve more than others
-        for i, wave in enumerate(SURVEY_WAVES):
-            score = base + i * drift + np.random.normal(0, 3)
-            survey_rows.append(
-                {
-                    "Accelerator": acc,
-                    "Wave": wave,
-                    "Dimension": dim,
-                    "Score": np.clip(score, 0, 100),
-                }
-            )
+    base_level = np.random.uniform(45, 65)
+    for umbrella, modules in SURVEY_STRUCTURE.items():
+        for module in modules:
+            drift = np.random.uniform(-3, 8)  # improvement over waves
+            for i, wave in enumerate(SURVEY_WAVES):
+                score = base_level + i * drift + np.random.normal(0, 3)
+                survey_rows.append(
+                    {
+                        "Accelerator": acc,
+                        "Wave": wave,
+                        "Umbrella": umbrella,
+                        "Module": module,
+                        "Score": np.clip(score, 0, 100),
+                    }
+                )
 survey_df = pd.DataFrame(survey_rows)
 
 # ---- Quantitative impact data (dummy DiD-style effect sizes) ------
@@ -98,7 +154,7 @@ for acc in ACCELERATORS:
             {
                 "Accelerator": acc,
                 "Outcome": outcome,
-                "Effect_size": eff,  # in absolute terms (e.g., +0.06 = +6 ppts)
+                "Effect_size": eff,  # absolute (e.g. 0.06 = +6 ppts)
                 "CI_low": ci_low,
                 "CI_high": ci_high,
                 "p_value": p_val,
@@ -106,20 +162,25 @@ for acc in ACCELERATORS:
         )
 quant_df = pd.DataFrame(quant_rows)
 
-# ---- Qualitative theme counts (dummy “coded segments” per theme) ---
+# ---- Qualitative theme counts (dummy coded segments) ---------------
 qual_rows = []
 for acc in ACCELERATORS:
-    base = np.random.randint(15, 40)
-    for theme in QUAL_THEMES:
-        # add variation by theme
-        mentions = base + np.random.randint(-10, 10)
-        qual_rows.append(
-            {
-                "Accelerator": acc,
-                "Theme": theme,
-                "Mentions": max(0, mentions),
-            }
-        )
+    for doc in QUAL_DOC_GROUPS:
+        for phase in QUAL_PHASES:
+            for level in QUAL_LEVELS:
+                base = np.random.randint(5, 20)
+                for theme in QUAL_THEMATIC_GROUPS:
+                    mentions = base + np.random.randint(-5, 10)
+                    qual_rows.append(
+                        {
+                            "Accelerator": acc,
+                            "Document_group": doc,
+                            "Phase": phase,
+                            "Level": level,
+                            "Thematic_group": theme,
+                            "Mentions": max(0, mentions),
+                        }
+                    )
 qual_df = pd.DataFrame(qual_rows)
 
 # ---- VfI / cost-effectiveness style dummy data ---------------------
@@ -151,7 +212,7 @@ if os.path.exists(logo_path):
 st.sidebar.markdown("<h3 style='color:#4B0082;'>Filters</h3>", unsafe_allow_html=True)
 
 # Accelerator selector
-selected_accelerator = st.sidebar.selectbox("Select Accelerator", ACCELERATORS)
+selected_accelerator = st.sidebar.selectbox("Select accelerator", ACCELERATORS)
 
 # Wave filter (for survey plots)
 selected_waves = st.sidebar.multiselect(
@@ -186,7 +247,7 @@ if theme == "Dark":
 
 # Sidebar info
 st.sidebar.info(
-    "This dummy dashboard illustrates how the TLG evaluation can be structured "
+    "Dummy dashboard illustrating how the TLG evaluation can be structured "
     "across qualitative, survey, quantitative, and value-for-investment strands."
 )
 
@@ -209,7 +270,7 @@ st.markdown("---")
 # -------------------------------------------------------------------
 col1, col2, col3 = st.columns(3)
 
-# Dummy survey engagement metric
+# Dummy survey metric
 acc_survey = survey_df[survey_df["Accelerator"] == selected_accelerator]
 avg_score = acc_survey["Score"].mean()
 
@@ -245,28 +306,62 @@ tab_qual, tab_survey, tab_quant, tab_vfi = st.tabs(
 
 # ------------------------ QUALITATIVE TAB ---------------------------
 with tab_qual:
-    st.subheader("Emergent themes from qualitative work")
+    st.subheader("Qualitative evaluation – codebook view")
 
-    acc_qual = qual_df[qual_df["Accelerator"] == selected_accelerator]
+    acc_qual = qual_df[qual_df["Accelerator"] == selected_accelerator].copy()
+
+    # Filters mimicking infrastructure codes
+    col_q1, col_q2 = st.columns(2)
+    with col_q1:
+        selected_doc = st.selectbox(
+            "Document group",
+            ["All"] + QUAL_DOC_GROUPS,
+        )
+    with col_q2:
+        selected_phase = st.selectbox(
+            "Programme / accelerator phase",
+            ["All"] + QUAL_PHASES,
+        )
+
+    if selected_doc != "All":
+        acc_qual = acc_qual[acc_qual["Document_group"] == selected_doc]
+    if selected_phase != "All":
+        acc_qual = acc_qual[acc_qual["Phase"] == selected_phase]
+
+    # Aggregate to thematic group level
+    thematic_summary = (
+        acc_qual.groupby("Thematic_group", as_index=False)["Mentions"]
+        .sum()
+        .sort_values("Mentions", ascending=False)
+    )
 
     fig_qual = px.bar(
-        acc_qual,
-        x="Theme",
+        thematic_summary,
+        x="Thematic_group",
         y="Mentions",
-        title="Number of coded segments per theme (dummy)",
-        color="Theme",
+        title="Coded segments by thematic group (dummy)",
         text_auto=True,
+        color="Thematic_group",
         color_discrete_sequence=[chart_color],
     )
-    fig_qual.update_layout(xaxis_title="", yaxis_title="Coded segments")
+    fig_qual.update_layout(
+        xaxis_title="Thematic group",
+        yaxis_title="Number of coded segments",
+    )
     st.plotly_chart(fig_qual, use_container_width=True)
 
-    st.markdown("#### Illustrative qualitative insights (dummy text)")
+    st.markdown("#### How this reflects the qualitative approach")
     st.markdown(
         """
-        - Frontline teams report **greater clarity of roles** and stronger relationships with central teams.  
-        - Data use is still described as **fragmented**, with several accelerators relying on legacy systems.  
-        - Participants highlight **trusting relationships** with practitioners as a key driver of engagement.
+        - **Document groups** (e.g. interviews, weeknotes, observations) are treated as stable
+          characteristics of the data and used here as filters rather than analytical codes.  
+        - **Infrastructure codes** such as *phase* and *level of analysis* (programme, accelerator,
+          central, local, delivery partners) structure where and when evidence arises.  
+        - **Thematic groups** provide deductive scaffolding aligned with the TLG Theory of Change:
+          TLG practices, enablers, barriers, mechanisms, outcomes, sustainability & scaling,
+          governance & partnership, and contextual factors.  
+        - Within each thematic group, inductive subcodes would capture specific routines, behaviours,
+          constraints, and outcomes as they emerge from the material.
         """
     )
 
@@ -274,31 +369,62 @@ with tab_qual:
 with tab_survey:
     st.subheader("Survey of ways of working")
 
-    acc_survey = survey_df[survey_df["Accelerator"] == selected_accelerator]
+    acc_survey = survey_df[survey_df["Accelerator"] == selected_accelerator].copy()
     if selected_waves:
         acc_survey = acc_survey[acc_survey["Wave"].isin(selected_waves)]
 
-    # Line chart: scores over waves by dimension
-    fig_survey = px.line(
-        acc_survey,
+    # Aggregated view by umbrella category
+    umbrella_summary = (
+        acc_survey.groupby(["Umbrella", "Wave"], as_index=False)["Score"].mean()
+    )
+
+    st.markdown("**Average scores by umbrella category (Organisational context / Capability / Capacity)**")
+    fig_umbrella = px.bar(
+        umbrella_summary,
+        x="Umbrella",
+        y="Score",
+        color="Wave",
+        barmode="group",
+        title="Average survey scores by umbrella category and wave (dummy)",
+    )
+    fig_umbrella.update_yaxes(range=[0, 100], title="Score (0–100)")
+    st.plotly_chart(fig_umbrella, use_container_width=True)
+
+    st.markdown("**Module-level view**")
+
+    selected_umbrella = st.selectbox(
+        "Focus on umbrella category",
+        ["All"] + list(SURVEY_STRUCTURE.keys()),
+    )
+
+    module_df = acc_survey.copy()
+    if selected_umbrella != "All":
+        module_df = module_df[module_df["Umbrella"] == selected_umbrella]
+
+    fig_modules = px.line(
+        module_df,
         x="Wave",
         y="Score",
-        color="Dimension",
+        color="Module",
         markers=True,
-        title="Survey scores by dimension and wave (dummy)",
+        title="Survey modules by wave (dummy)",
     )
-    fig_survey.update_traces(line=dict(width=3))
-    fig_survey.update_yaxes(range=[0, 100])
-    st.plotly_chart(fig_survey, use_container_width=True)
+    fig_modules.update_traces(line=dict(width=3))
+    fig_modules.update_yaxes(range=[0, 100])
+    st.plotly_chart(fig_modules, use_container_width=True)
 
-    # Optional: table
-    st.markdown("#### Underlying survey data (dummy)")
-    st.dataframe(
-        acc_survey.pivot_table(
-            index="Dimension",
-            columns="Wave",
-            values="Score",
-        ).round(1)
+    st.markdown("#### Conceptual alignment")
+    st.markdown(
+        """
+        - **Organisational context** modules proxy mission orientation, culture and trust,
+          and psychological safety – the backdrop against which TLG practices land.  
+        - **Capability** modules capture evaluative, adaptive, decision-making, and relational
+          capabilities – the ability to generate, interpret and act on feedback.  
+        - **Capacity** modules reflect resourcing, digital infrastructure, funding, and
+          working-in-the-open – the Grow “foundations” that shape what is feasible.  
+        - In the real survey, these modules would be operationalised with items drawn from
+          established scales (e.g. Moynihan & Landuyt; Moynihan & Pandey; Edmondson; etc.).
+        """
     )
 
 # ------------------------ QUANT TAB -------------------------------
@@ -374,7 +500,8 @@ with tab_vfi:
         """
         **Interpretation (dummy narrative):**  
         - Values shown here are *illustrative only*.  
-        - In the real evaluation, this strand would combine incremental costs from MI/admin data with monetised benefits (e.g., reduced demand, improved outcomes) to estimate VfI.
+        - In the real evaluation, this strand would combine incremental costs from MI/admin data
+          with monetised benefits (e.g., reduced demand, improved outcomes) to estimate VfI.
         """
     )
 

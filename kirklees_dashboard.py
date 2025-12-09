@@ -25,7 +25,7 @@ st.markdown(
 )
 
 # -------------------------------------------------------------
-# DATA (from your table)
+# DATA
 # -------------------------------------------------------------
 data = {
     "Date": [
@@ -40,7 +40,6 @@ data = {
         "Jul 2023-Jun 2024",
         "Jul 2024-Jun 2025",
     ],
-    # short labels for the x-axis
     "Period_short": [
         "2015–16",
         "2016–17",
@@ -53,20 +52,17 @@ data = {
         "2023–24",
         "2024–25",
     ],
-    # employment
     "emp_percent": [70.0, 70.7, 70.5, 71.9, 73.6, 69.9, 73.7, 72.7, 74.1, 76.4],
     "emp_conf":    [3.1,  3.0,  3.0,  2.8,  3.0,  3.4,  3.4,  3.9,  4.0,  3.2],
-    # unemployment
     "unemp_percent": [5.1, 6.4, 4.5, 4.1, 1.8, 5.9, 2.3, 4.8, 3.3, 5.1],
     "unemp_conf":    [1.7, 1.9, 1.6, 1.5, 1.0, 2.0, 1.3, 2.2, 1.9, 1.8],
-    # inactivity
     "inact_percent": [26.2, 24.4, 26.2, 25.0, 25.0, 25.7, 24.6, 23.6, 23.3, 19.5],
     "inact_conf":    [3.0,  2.9,  2.9,  2.7,  3.0,  3.3,  3.3,  3.8,  3.9,  3.0],
 }
 
 df = pd.DataFrame(data)
 
-# Confidence interval bounds
+# CI bounds
 for prefix in ["emp", "unemp", "inact"]:
     df[f"{prefix}_lower"] = df[f"{prefix}_percent"] - df[f"{prefix}_conf"]
     df[f"{prefix}_upper"] = df[f"{prefix}_percent"] + df[f"{prefix}_conf"]
@@ -74,11 +70,11 @@ for prefix in ["emp", "unemp", "inact"]:
 # -------------------------------------------------------------
 # COLOURS & SPLIT POINT
 # -------------------------------------------------------------
-PREV_COLOUR = "#959495"   # vintage grey
-CURR_COLOUR = "#206095"   # ocean blue
-CI_FILL = "rgba(32,96,149,0.15)"  # light blue band
+PREV_COLOUR = "#959495"     # vintage grey
+CURR_COLOUR = "#206095"     # ocean blue
+PREV_CI = "rgba(149,148,149,0.25)"
+CURR_CI = "rgba(32,96,149,0.25)"
 
-# index that marks the last "previous" period (Jul 2020–Jun 2021)
 split_idx = df.index[df["Date"] == "Jul 2020-Jun 2021"][0]
 
 # -------------------------------------------------------------
@@ -92,43 +88,50 @@ def make_metric_figure(
     title: str,
     y_range=None,
 ):
-    """
-    value_col: e.g. 'emp_percent'
-    lower_col, upper_col: CI bounds
-    """
-
     mean_val = df[value_col].mean()
 
-    # split into previous / current periods
     prev = df.iloc[: split_idx + 1]
     curr = df.iloc[split_idx:]
 
     fig = go.Figure()
 
-    # CI band (single colour across whole period)
-    fig.add_trace(
-        go.Scatter(
-            x=df["Period_short"],
-            y=df[upper_col],
-            line=dict(width=0),
-            showlegend=False,
-            hoverinfo="skip",
+    # ---- CI band for previous periods (grey) ----
+    if len(prev) > 1:
+        x_prev = list(prev["Period_short"]) + list(prev["Period_short"][::-1])
+        y_prev = list(prev[upper_col]) + list(prev[lower_col][::-1])
+        fig.add_trace(
+            go.Scatter(
+                x=x_prev,
+                y=y_prev,
+                mode="lines",
+                line=dict(width=0),
+                fill="toself",
+                fillcolor=PREV_CI,
+                name="95% confidence interval (previous)",
+                hoverinfo="skip",
+                showlegend=False,
+            )
         )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=df["Period_short"],
-            y=df[lower_col],
-            line=dict(width=0),
-            fill="tonexty",
-            fillcolor=CI_FILL,
-            showlegend=False,
-            hoverinfo="skip",
-            name="95% confidence interval",
-        )
-    )
 
-    # previous periods line (grey)
+    # ---- CI band for current periods (blue) ----
+    if len(curr) > 1:
+        x_curr = list(curr["Period_short"]) + list(curr["Period_short"][::-1])
+        y_curr = list(curr[upper_col]) + list(curr[lower_col][::-1])
+        fig.add_trace(
+            go.Scatter(
+                x=x_curr,
+                y=y_curr,
+                mode="lines",
+                line=dict(width=0),
+                fill="toself",
+                fillcolor=CURR_CI,
+                name="95% confidence interval (current)",
+                hoverinfo="skip",
+                showlegend=False,
+            )
+        )
+
+    # ---- previous periods line (grey) ----
     fig.add_trace(
         go.Scatter(
             x=prev["Period_short"],
@@ -136,12 +139,13 @@ def make_metric_figure(
             mode="lines+markers",
             line=dict(color=PREV_COLOUR, width=3),
             marker=dict(size=6),
-            showlegend=False,
+            name="Previous periods",
             hovertemplate="%{x}<br>%{y:.1f}%<extra></extra>",
+            showlegend=False,  # keep legend simple
         )
     )
 
-    # current periods line (blue) – includes the split point so the line is continuous
+    # ---- current periods line (blue) ----
     fig.add_trace(
         go.Scatter(
             x=curr["Period_short"],
@@ -149,12 +153,12 @@ def make_metric_figure(
             mode="lines+markers",
             line=dict(color=CURR_COLOUR, width=3),
             marker=dict(size=6),
-            name=title,
+            name="Current periods",
             hovertemplate="%{x}<br>%{y:.1f}%<extra></extra>",
         )
     )
 
-    # average line
+    # ---- average dashed line ----
     fig.add_hline(
         y=mean_val,
         line_dash="dash",
@@ -164,9 +168,8 @@ def make_metric_figure(
         annotation_font=dict(size=11, color="#595959"),
     )
 
-    # layout
     fig.update_layout(
-        title=dict(text=title, x=0, xanchor="left", yanchor="top", font=dict(size=18)),
+        title=dict(text=title, x=0, xanchor="left", font=dict(size=18)),
         xaxis=dict(
             title="Time period",
             tickangle=-40,
@@ -187,9 +190,8 @@ def make_metric_figure(
 
     return fig
 
-
 # -------------------------------------------------------------
-# CHARTS (STACKED VERTICALLY)
+# CHARTS (VERTICAL STACK)
 # -------------------------------------------------------------
 fig_emp = make_metric_figure(
     df,
@@ -228,8 +230,7 @@ st.plotly_chart(fig_inact, use_container_width=True)
 st.markdown(
     """
 **Source:** Annual Population Survey, Office for National Statistics (APS 12-month periods).  
-Notes: 95% confidence intervals shown as shaded bands. Estimates should be interpreted with care; 
-levels may be affected by population weighting revisions from 2019–20 onwards.  
+95% confidence intervals shown as shaded bands.  
 [ONS visualisation guidance](https://ons-design.notion.site/314386f7916e497baae8118a782911f5?v=d7efdd82e8884f548a6c79eda2d0b2e4&source=copy_link)
 """
 )

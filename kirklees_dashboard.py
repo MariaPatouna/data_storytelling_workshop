@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 # PAGE CONFIG
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Kirklees - Labour Market Profile ",
+    page_title="Kirklees - Labour Market Profile",
     layout="wide",
     page_icon="📈",
 )
@@ -82,7 +82,7 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
         go.Scatter(
             x=list(pre["Period"]) + list(pre["Period"][::-1]),
             y=list(pre_low) + list(pre_high[::-1]),
-            mode="lines",                    # no markers
+            mode="lines",
             marker=dict(size=0),
             fill="toself",
             fillcolor=PRE_SHADE,
@@ -96,7 +96,7 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
         go.Scatter(
             x=list(curr["Period"]) + list(curr["Period"][::-1]),
             y=list(curr_low) + list(curr_high[::-1]),
-            mode="lines",                    # no markers
+            mode="lines",
             marker=dict(size=0),
             fill="toself",
             fillcolor=CURR_SHADE,
@@ -112,7 +112,7 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
             x=pre["Period"],
             y=pre[value_col],
             mode="lines",
-            marker=dict(size=0),             # ensure no dots
+            marker=dict(size=0),
             line=dict(color=PRE_COLOUR, width=3),
             name="Pre-KBOP period (2015–16 to 2020–21)",
         )
@@ -123,7 +123,7 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
             x=curr["Period"],
             y=curr[value_col],
             mode="lines",
-            marker=dict(size=0),             # ensure no dots
+            marker=dict(size=0),
             line=dict(color=CURR_COLOUR, width=3),
             name="KBOP period (2021–22 to 2024–25)",
         )
@@ -176,25 +176,32 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
 # PAGE CONTENT
 # ---------------------------------------------------------
 st.markdown(
-    "<h1 style='color:#206095;'> Kirklees - Labour Market Profile </h1>",
+    "<h1 style='color:#206095;'>Kirklees - Labour Market Profile</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
-    "<h3 style='color:#595959;'> ONS Annual Population Survey (APS) data </h3>",
+    "<h3 style='color:#595959;'>ONS Annual Population Survey (APS) data</h3>",
     unsafe_allow_html=True,
 )
 
+# Option to zoom the unemployment chart
+zoom_unemp = st.checkbox("Zoom y-axis for unemployment (0–10%)", value=True)
+
+# Employment – 0–100%
 st.plotly_chart(
     make_metric_figure(
         df,
         "Employment_pct",
         "Employment_ci",
         "Employment rate (16–64)",
-        60,
-        80,
+        0,
+        100,
     ),
     use_container_width=True,
 )
+
+# Unemployment – either 0–10% (zoom) or 0–100% for comparability
+unemp_y_max = 10 if zoom_unemp else 100
 
 st.plotly_chart(
     make_metric_figure(
@@ -203,19 +210,20 @@ st.plotly_chart(
         "Unemp_ci",
         "Unemployment rate (16–64)",
         0,
-        8,
+        unemp_y_max,
     ),
     use_container_width=True,
 )
 
+# Economic inactivity – 0–100%
 st.plotly_chart(
     make_metric_figure(
         df,
         "Inact_pct",
         "Inact_ci",
         "Economic inactivity rate (16–64)",
-        15,
-        30,
+        0,
+        100,
     ),
     use_container_width=True,
 )

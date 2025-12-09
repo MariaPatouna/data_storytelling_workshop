@@ -176,11 +176,11 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
 # PAGE CONTENT
 # ---------------------------------------------------------
 st.markdown(
-    "<h1 style='color:#206095;'>Employment, unemployment and economic inactivity over time</h1>",
+    "<h1 style='color:#206095;'> Kirklees - Labour Market Profile </h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
-    "<h3 style='color:#595959;'>Kirklees, age 16–64 – 12-month APS periods</h3>",
+    "<h3 style='color:#595959;'> ONS Annual Population Survey (APS) data - ,s</h3>",
     unsafe_allow_html=True,
 )
 

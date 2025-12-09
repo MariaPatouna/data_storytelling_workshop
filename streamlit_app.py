@@ -386,7 +386,7 @@ if theme == "Dark":
 
 # Sidebar info
 st.sidebar.info(
-    "Dummy dashboard illustrating how the TLG evaluation"
+    "Dummy dashboard illustrating the TLG evaluation approach"
 )
 
 # -------------------------------------------------------------------

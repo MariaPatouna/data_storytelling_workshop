@@ -112,7 +112,7 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
             y=pre[value_col],
             mode="lines",
             line=dict(color=PRE_COLOUR, width=3),
-            marker=dict(size=0),          # ensure NO markers
+            marker=dict(size=0),         # ensure NO markers
             name="Pre-KBOP period (2015–16 to 2020–21)",
         )
     )

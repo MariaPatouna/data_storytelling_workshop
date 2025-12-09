@@ -2,240 +2,278 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-# ---------------------------------------------------------
-# PAGE CONFIG
-# ---------------------------------------------------------
+# -------------------------------------------------------
+# PAGE CONFIG & SIMPLE STYLING
+# -------------------------------------------------------
 st.set_page_config(
-    page_title="Kirklees APS – Employment, unemployment and inactivity",
+    page_title="Kirklees labour market – APS trends",
     layout="wide",
     page_icon="📈",
 )
 
-# ---------------------------------------------------------
-# DATA
-# ---------------------------------------------------------
-# Annual Population Survey – Kirklees, age 16–64
-periods = [
-    "2015-16",
-    "2016-17",
-    "2017-18",
-    "2018-19",
-    "2019-20",
-    "2020-21",
-    "2021-22",
-    "2022-23",
-    "2023-24",
-    "2024-25",
-]
-
-employment_pct = [70.0, 70.7, 70.5, 71.9, 73.6, 69.9, 73.7, 72.7, 74.1, 76.4]
-employment_ci  = [3.1,  3.0,  3.0,  2.8,  3.0,  3.4,  3.4,  3.9,  4.0,  3.2]
-
-unemp_pct = [5.1, 6.4, 4.5, 4.1, 1.8, 5.9, 2.3, 4.8, 3.3, 5.1]
-unemp_ci  = [1.7, 1.9, 1.6, 1.5, 1.0, 2.0, 1.3, 2.2, 1.9, 1.8]
-
-inact_pct = [26.2, 24.4, 26.2, 25.0, 25.0, 25.7, 24.6, 23.6, 23.3, 19.5]
-inact_ci  = [3.0,  2.9,  2.9,  2.7,  3.0,  3.3,  3.3,  3.8,  3.9,  3.0]
-
-df = pd.DataFrame(
-    {
-        "Period": periods,
-        "Employment_pct": employment_pct,
-        "Employment_ci": employment_ci,
-        "Unemp_pct": unemp_pct,
-        "Unemp_ci": unemp_ci,
-        "Inact_pct": inact_pct,
-        "Inact_ci": inact_ci,
-    }
+st.markdown(
+    """
+    <style>
+    * { font-family: "Verdana", sans-serif; }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
-# Split: pre-KBOP (2015-16 to 2020-21) vs KBOP period (2021-22 onwards)
-split_period = "2021-22"
-split_idx = df.index[df["Period"] == split_period][0]
+# -------------------------------------------------------
+# DATA
+# -------------------------------------------------------
 
-# ONS colours
-PRE_COLOUR = "#959495"   # previous time period – Vintage grey
-CURR_COLOUR = "#206095"  # current time period – Ocean blue
-PRE_SHADE = "rgba(149,148,149,0.25)"
-CURR_SHADE = "rgba(32,96,149,0.25)"
+# Raw APS table coded directly
+data = [
+    # Period label, employment %, employment CI, unemployment %, unemployment CI,
+    # inactivity %, inactivity CI
+    ("Jul 2015-Jun 2016", 70.0, 3.1, 5.1, 1.7, 26.2, 3.0),
+    ("Jul 2016-Jun 2017", 70.7, 3.0, 6.4, 1.9, 24.4, 2.9),
+    ("Jul 2017-Jun 2018", 70.5, 3.0, 4.5, 1.6, 26.2, 2.9),
+    ("Jul 2018-Jun 2019", 71.9, 2.8, 4.1, 1.5, 25.0, 2.7),
+    ("Jul 2019-Jun 2020", 73.6, 3.0, 1.8, 1.0, 25.0, 3.0),
+    ("Jul 2020-Jun 2021", 69.9, 3.4, 5.9, 2.0, 25.7, 3.3),
+    ("Jul 2021-Jun 2022", 73.7, 3.4, 2.3, 1.3, 24.6, 3.3),
+    ("Jul 2022-Jun 2023", 72.7, 3.9, 4.8, 2.2, 23.6, 3.8),
+    ("Jul 2023-Jun 2024", 74.1, 4.0, 3.3, 1.9, 23.3, 3.9),
+    ("Jul 2024-Jun 2025", 76.4, 3.2, 5.1, 1.8, 19.5, 3.0),
+]
 
-# ---------------------------------------------------------
-# FIGURE FACTORY
-# ---------------------------------------------------------
-def make_metric_figure(
+df = pd.DataFrame(
+    data,
+    columns=[
+        "RawPeriod",
+        "employment_rate",
+        "employment_ci",
+        "unemployment_rate",
+        "unemployment_ci",
+        "inactive_rate",
+        "inactive_ci",
+    ],
+)
+
+# Shorter period labels for the x-axis
+short_labels = [
+    "2015–16",
+    "2016–17",
+    "2017–18",
+    "2018–19",
+    "2019–20",
+    "2020–21",
+    "2021–22",
+    "2022–23",
+    "2023–24",
+    "2024–25",
+]
+df["Period"] = pd.Categorical(short_labels, categories=short_labels, ordered=True)
+
+# Pre-KBOP vs KBOP split: first 6 rows are pre, remaining are KBOP
+df["is_kbop"] = False
+df.loc[df.index >= 6, "is_kbop"] = True
+
+# Compute upper / lower CI bounds
+for prefix in ["employment", "unemployment", "inactive"]:
+    df[f"{prefix}_upper"] = df[f"{prefix}_rate"] + df[f"{prefix}_ci"]
+    df[f"{prefix}_lower"] = df[f"{prefix}_rate"] - df[f"{prefix}_ci"]
+
+# -------------------------------------------------------
+# COLOURS (ONS STYLE)
+# -------------------------------------------------------
+PRE_COLOUR = "#959495"                     # Vintage grey
+CURR_COLOUR = "#206095"                    # Ocean blue
+PRE_FILL = "rgba(149,148,149,0.25)"
+CURR_FILL = "rgba(32,96,149,0.25)"
+AVG_LINE_COLOUR = "#595959"
+
+# -------------------------------------------------------
+# HELPER: CREATE FIGURE FOR ONE INDICATOR
+# -------------------------------------------------------
+def create_indicator_figure(
     df,
     value_col,
     ci_col,
     title,
-    y_min,
-    y_max,
+    y_range,
 ):
-    """Return a Plotly figure for a single metric with CI bands,
-    pre/KBOP colour split, and an average dashed line."""
+    upper_col = f"{value_col.rsplit('_', 1)[0]}_upper"
+    lower_col = f"{value_col.rsplit('_', 1)[0]}_lower"
+
+    # Split into pre-KBOP and KBOP periods
+    pre = df[~df["is_kbop"]].copy()
+    cur = df[df["is_kbop"]].copy()
+
     fig = go.Figure()
 
-    # CI bounds
-    ci_low = df[value_col] - df[ci_col]
-    ci_high = df[value_col] + df[ci_col]
-
-    # Pre-KBOP segment (up to 2020-21)
-    pre = df.iloc[: split_idx + 1]
-    pre_low = ci_low.iloc[: split_idx + 1]
-    pre_high = ci_high.iloc[: split_idx + 1]
-
-    # KBOP segment (from 2021-22 onwards)
-    curr = df.iloc[split_idx:]
-    curr_low = ci_low.iloc[split_idx:]
-    curr_high = ci_high.iloc[split_idx:]
-
-    # --- CI bands (pre and current) ---
-    # Pre-KBOP CI
+    # --- Pre-KBOP CI ribbon (grey) ---
     fig.add_trace(
         go.Scatter(
-            x=list(pre["Period"]) + list(pre["Period"][::-1]),
-            y=list(pre_low) + list(pre_high[::-1]),
-            fill="toself",
-            fillcolor=PRE_SHADE,
-            line=dict(width=0),
-            hoverinfo="skip",
+            x=pre["Period"],
+            y=pre[upper_col],
+            mode="lines",
+            line=dict(width=0, color="rgba(0,0,0,0)"),
             showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=pre["Period"],
+            y=pre[lower_col],
+            mode="lines",
+            line=dict(width=0, color="rgba(0,0,0,0)"),
+            fill="tonexty",
+            fillcolor=PRE_FILL,
+            showlegend=False,
+            hoverinfo="skip",
         )
     )
 
-    # KBOP CI
+    # --- KBOP CI ribbon (blue) ---
     fig.add_trace(
         go.Scatter(
-            x=list(curr["Period"]) + list(curr["Period"][::-1]),
-            y=list(curr_low) + list(curr_high[::-1]),
-            fill="toself",
-            fillcolor=CURR_SHADE,
-            line=dict(width=0),
-            hoverinfo="skip",
+            x=cur["Period"],
+            y=cur[upper_col],
+            mode="lines",
+            line=dict(width=0, color="rgba(0,0,0,0)"),
             showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=cur["Period"],
+            y=cur[lower_col],
+            mode="lines",
+            line=dict(width=0, color="rgba(0,0,0,0)"),
+            fill="tonexty",
+            fillcolor=CURR_FILL,
+            showlegend=False,
+            hoverinfo="skip",
         )
     )
 
-    # --- Lines (pre and current) ---
-    # Pre-KBOP line
+    # --- Pre-KBOP line (no markers) ---
     fig.add_trace(
         go.Scatter(
             x=pre["Period"],
             y=pre[value_col],
             mode="lines",
-            line=dict(color=PRE_COLOUR, width=3),
-            name="Pre-KBOP period (2015–16 to 2020–21)",
+            line=dict(color=PRE_COLOUR, width=2.5),
+            name="Pre-KBOP periods (2015–16 to 2020–21)",
             showlegend=True,
         )
     )
 
-    # KBOP line
+    # --- KBOP line (no markers; this is what we changed) ---
     fig.add_trace(
         go.Scatter(
-            x=curr["Period"],
-            y=curr[value_col],
-            mode="lines+markers",
+            x=cur["Period"],
+            y=cur[value_col],
+            mode="lines",
             line=dict(color=CURR_COLOUR, width=3),
-            marker=dict(size=6),
-            name="KBOP period (2021–22 to 2024–25)",
+            marker=dict(size=0),
+            name="KBOP periods (2021–22 to 2024–25)",
             showlegend=True,
         )
     )
 
-    # Average line across whole period
+    # --- Dashed average line across all years ---
     avg_val = df[value_col].mean()
     fig.add_hline(
         y=avg_val,
         line_dash="dash",
-        line_color="#595959",
-        annotation_text=f"Average: {avg_val:.1f}%",
-        annotation_position="top left",
-        annotation_font=dict(size=11, color="#595959"),
+        line_color=AVG_LINE_COLOUR,
+        line_width=1.5,
+    )
+    # Label for the average line, anchored on the left
+    fig.add_annotation(
+        x=df["Period"].iloc[0],
+        y=avg_val + 0.3,
+        xanchor="left",
+        showarrow=False,
+        text=f"Average: {avg_val:.1f}%",
+        font=dict(size=11, color=AVG_LINE_COLOUR),
     )
 
     # Layout
     fig.update_layout(
-        title=title,
-        title_x=0.0,
-        margin=dict(l=60, r=40, t=60, b=80),
+        title=dict(
+            text=title,
+            x=0,
+            xanchor="left",
+            yanchor="top",
+            font=dict(size=18),
+        ),
+        margin=dict(l=60, r=30, t=40, b=60),
         plot_bgcolor="#FFFFFF",
         paper_bgcolor="#FFFFFF",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(size=11),
+        ),
         xaxis=dict(
             title="Time period",
-            tickmode="array",
-            tickvals=df["Period"],
-            ticktext=df["Period"],
             tickangle=45,
             showgrid=False,
+            zeroline=False,
         ),
         yaxis=dict(
             title="Percent of working-age population",
-            range=[y_min, y_max],
+            range=y_range,
+            zeroline=False,
             showgrid=True,
             gridcolor="#E5E5E5",
-        ),
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=1.0,
-            xanchor="left",
-            x=1.02,
-            bordercolor="rgba(0,0,0,0)",
         ),
     )
 
     return fig
 
 
-# ---------------------------------------------------------
-# PAGE CONTENT
-# ---------------------------------------------------------
-st.markdown(
-    "<h1 style='color:#206095;'>Employment, unemployment and economic inactivity over time</h1>",
-    unsafe_allow_html=True,
-)
-st.markdown(
-    "<h3 style='color:#595959;'>Kirklees, age 16–64 – 12-month APS periods</h3>",
-    unsafe_allow_html=True,
-)
+# -------------------------------------------------------
+# STREAMLIT LAYOUT
+# -------------------------------------------------------
+st.title("Employment, unemployment and economic inactivity over time")
+st.subheader("Kirklees, age 16–64 – 12-month APS periods")
 
-# Employment
-fig_emp = make_metric_figure(
+# Employment chart
+fig_emp = create_indicator_figure(
     df,
-    value_col="Employment_pct",
-    ci_col="Employment_ci",
+    value_col="employment_rate",
+    ci_col="employment_ci",
     title="Employment rate (16–64)",
-    y_min=60,
-    y_max=80,
+    y_range=[60, 80],
 )
 st.plotly_chart(fig_emp, use_container_width=True)
 
-# Unemployment
-fig_unemp = make_metric_figure(
+# Unemployment chart
+fig_unemp = create_indicator_figure(
     df,
-    value_col="Unemp_pct",
-    ci_col="Unemp_ci",
+    value_col="unemployment_rate",
+    ci_col="unemployment_ci",
     title="Unemployment rate (16–64)",
-    y_min=0,
-    y_max=8,
+    y_range=[0, 8],
 )
 st.plotly_chart(fig_unemp, use_container_width=True)
 
-# Economic inactivity
-fig_inact = make_metric_figure(
+# Economic inactivity chart
+fig_inact = create_indicator_figure(
     df,
-    value_col="Inact_pct",
-    ci_col="Inact_ci",
+    value_col="inactive_rate",
+    ci_col="inactive_ci",
     title="Economic inactivity rate (16–64)",
-    y_min=15,
-    y_max=30,
+    y_range=[18, 30],
 )
 st.plotly_chart(fig_inact, use_container_width=True)
 
-# Minimal source text
+# Simple source note
 st.markdown(
     """
-    **Source:** ONS Annual Population Survey (APS), Kirklees residents aged 16–64.  
-    Confidence intervals shown at the 95% level.  
-    Visual style informed by the [ONS design guidance](https://ons-design.notion.site/314386f7916e497baae8118a782911f5).
-    """
+    **Source:** Annual Population Survey (APS), ONS via Nomis.  
+    Notes: 12-month APS periods; 95% confidence intervals shown as shaded ranges.
+    """,
 )

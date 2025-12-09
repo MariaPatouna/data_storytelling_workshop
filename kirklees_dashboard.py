@@ -78,11 +78,12 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
     curr_high = ci_high.iloc[split_idx:]
 
     # ---------- CI bands ----------
-    # Pre-KBOP CI
     fig.add_trace(
         go.Scatter(
             x=list(pre["Period"]) + list(pre["Period"][::-1]),
             y=list(pre_low) + list(pre_high[::-1]),
+            mode="lines",                    # no markers
+            marker=dict(size=0),
             fill="toself",
             fillcolor=PRE_SHADE,
             line=dict(width=0),
@@ -91,11 +92,12 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
         )
     )
 
-    # KBOP CI
     fig.add_trace(
         go.Scatter(
             x=list(curr["Period"]) + list(curr["Period"][::-1]),
             y=list(curr_low) + list(curr_high[::-1]),
+            mode="lines",                    # no markers
+            marker=dict(size=0),
             fill="toself",
             fillcolor=CURR_SHADE,
             line=dict(width=0),
@@ -104,27 +106,25 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
         )
     )
 
-    # ---------- Lines (no markers) ----------
-    # Pre-KBOP line
+    # ---------- Lines ----------
     fig.add_trace(
         go.Scatter(
             x=pre["Period"],
             y=pre[value_col],
             mode="lines",
+            marker=dict(size=0),             # ensure no dots
             line=dict(color=PRE_COLOUR, width=3),
-            marker=dict(size=0),         # ensure NO markers
             name="Pre-KBOP period (2015–16 to 2020–21)",
         )
     )
 
-    # KBOP line
     fig.add_trace(
         go.Scatter(
             x=curr["Period"],
             y=curr[value_col],
             mode="lines",
+            marker=dict(size=0),             # ensure no dots
             line=dict(color=CURR_COLOUR, width=3),
-            marker=dict(size=0),          # ensure NO markers
             name="KBOP period (2021–22 to 2024–25)",
         )
     )

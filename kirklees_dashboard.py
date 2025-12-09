@@ -88,7 +88,7 @@ def make_metric_figure(
 
     fig = go.Figure()
 
-    # --- CI band previous (grey) ---
+    # --- CI band PRE (grey) ---
     if len(prev) > 1:
         x_prev = list(prev["Period_short"]) + list(prev["Period_short"][::-1])
         y_prev = list(prev[upper_col]) + list(prev[lower_col][::-1])
@@ -100,13 +100,13 @@ def make_metric_figure(
                 line=dict(width=0),
                 fill="toself",
                 fillcolor=PREV_CI,
-                name="95% CI (pre-KBOP)",
+                name="95% CI – pre-KBOP",
                 hoverinfo="skip",
-                showlegend=False,
+                showlegend=False,   # **CI band stays out of legend**
             )
         )
 
-    # --- CI band current (blue) ---
+    # --- CI band CURRENT (blue) ---
     if len(curr) > 1:
         x_curr = list(curr["Period_short"]) + list(curr["Period_short"][::-1])
         y_curr = list(curr[upper_col]) + list(curr[lower_col][::-1])
@@ -118,13 +118,13 @@ def make_metric_figure(
                 line=dict(width=0),
                 fill="toself",
                 fillcolor=CURR_CI,
-                name="95% CI (KBOP period)",
+                name="95% CI – KBOP period",
                 hoverinfo="skip",
-                showlegend=False,
+                showlegend=False,   # **CI band stays out of legend**
             )
         )
 
-    # --- previous periods line (grey) shown in legend ---
+    # ---------- PRE line (grey) – MUST be showlegend=True ----------
     fig.add_trace(
         go.Scatter(
             x=prev["Period_short"],
@@ -132,13 +132,14 @@ def make_metric_figure(
             mode="lines+markers",
             line=dict(color=PREV_COLOUR, width=3),
             marker=dict(size=6),
-            name=legend_prev,
+            name=legend_prev,          # e.g. "Pre-KBOP period employment rate (2015–16 to 2020–21)"
+            showlegend=True,           # <<< THIS makes it appear in the legend
+            legendgroup="periods",
             hovertemplate="%{x}<br>%{y:.1f}%<extra></extra>",
-            showlegend=True,
         )
     )
 
-    # --- current periods line (blue) shown in legend ---
+    # ---------- CURRENT line (blue) ----------
     fig.add_trace(
         go.Scatter(
             x=curr["Period_short"],
@@ -146,13 +147,14 @@ def make_metric_figure(
             mode="lines+markers",
             line=dict(color=CURR_COLOUR, width=3),
             marker=dict(size=6),
-            name=legend_curr,
-            hovertemplate="%{x}<br>%{y:.1f}%<extra></extra>",
+            name=legend_curr,          # e.g. "KBOP period employment rate (2021–22 to 2024–25)"
             showlegend=True,
+            legendgroup="periods",
+            hovertemplate="%{x}<br>%{y:.1f}%<extra></extra>",
         )
     )
 
-    # --- average dashed line ---
+    # Average dashed line
     fig.add_hline(
         y=mean_val,
         line_dash="dash",
@@ -173,7 +175,7 @@ def make_metric_figure(
             title="Percent of working-age population",
             rangemode="tozero",
         ),
-        margin=dict(l=80, r=40, t=60, b=80),
+        margin=dict(l=80, r=200, t=60, b=80),
         plot_bgcolor="#FFFFFF",
         paper_bgcolor="#FFFFFF",
         hovermode="x unified",
@@ -182,7 +184,7 @@ def make_metric_figure(
             x=1.02,
             xanchor="left",
             y=1,
-            bgcolor="rgba(255,255,255,0.8)",
+            bgcolor="rgba(255,255,255,0.85)",
             bordercolor="rgba(0,0,0,0)",
         ),
     )

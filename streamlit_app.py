@@ -1,9 +1,7 @@
 import streamlit as st
-
-st.title('🎈 App Name')
-
-st.write('Hello world!')
-
+import pandas as pd
+import numpy as np
+import plotly.express as px
 
 # Set the page title
 st.set_page_config(page_title="Enh Basic Dashboard", layout="wide")

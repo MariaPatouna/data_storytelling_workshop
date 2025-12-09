@@ -385,9 +385,23 @@ if theme == "Dark":
     )
 
 # Sidebar info
-st.sidebar.info(
-    "Dummy dashboard illustrating the TLG evaluation approach"
+st.sidebar.markdown(
+    """
+    <div style="
+        text-align: center;
+        font-weight: 700;
+        font-size: 15px;
+        color: #333;
+        padding: 8px;
+        border: 1px solid #DDD;
+        border-radius: 6px;
+        background-color: #F8F8F8;">
+        Dummy dashboard illustrating the TLG evaluation approach
+    </div>
+    """,
+    unsafe_allow_html=True
 )
+
 
 # -------------------------------------------------------------------
 # HEADER

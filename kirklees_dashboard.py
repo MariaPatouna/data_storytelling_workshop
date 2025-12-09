@@ -180,7 +180,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(
-    "<h3 style='color:#595959;'> ONS Annual Population Survey (APS) data - ,s</h3>",
+    "<h3 style='color:#595959;'> ONS Annual Population Survey (APS) data </h3>",
     unsafe_allow_html=True,
 )
 

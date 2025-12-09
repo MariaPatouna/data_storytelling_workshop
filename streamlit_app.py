@@ -412,29 +412,49 @@ st.markdown("### Where is this accelerator located?")
 map_df = geo_df.copy()
 map_df["Selected"] = map_df["Accelerator"] == selected_accelerator
 map_df["Marker_size"] = map_df["Selected"].map({True: 18, False: 10})
+map_df["Type"] = np.where(
+    map_df["Selected"],
+    "Selected accelerator team",
+    "Other TLG accelerator sites",
+)
 
 fig_map = px.scatter_mapbox(
     map_df,
     lat="lat",
     lon="lon",
     hover_name="Place",
-    hover_data={"Accelerator": True, "Selected": False, "lat": False, "lon": False},
-    color="Selected",
+    hover_data={
+        "Accelerator": True,
+        "Type": False,
+        "Marker_size": False,
+        "lat": False,
+        "lon": False,
+    },
+    color="Type",
     size="Marker_size",
     size_max=20,
     zoom=5,
     center={"lat": 53.5, "lon": -2.0},
     mapbox_style="open-street-map",
     color_discrete_map={
-        True: "#005F83",   # highlighted site
-        False: "#7FB3D5",  # other TLG sites
+        "Selected accelerator team": "#005F83",      # highlight
+        "Other TLG accelerator sites": "#7FB3D5",    # background sites
     },
 )
 
 fig_map.update_layout(
     margin={"r": 0, "t": 0, "l": 0, "b": 0},
     height=400,
-    legend_title="Selected accelerator",
+    legend_title="",
+)
+
+# Custom hover note
+fig_map.update_traces(
+    hovertemplate=(
+        "<b>%{hovertext}</b><br>"  # Place name
+        "%{customdata[0]}<br>"     # Accelerator name
+        "This accelerator team is located here.<extra></extra>"
+    )
 )
 
 st.plotly_chart(fig_map, use_container_width=True)

@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 # PAGE CONFIG
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Kirklees APS – Employment, unemployment and inactivity",
+    page_title="Kirklees - Labour Market Profile ",
     layout="wide",
     page_icon="📈",
 )

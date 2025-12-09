@@ -43,7 +43,7 @@ st.markdown(
 )
 
 # -------------------------------------------------------------------
-# DUMMY DATA GENERATION FOR TLG
+# CONSTANTS / DUMMY DATA DEFINITIONS
 # -------------------------------------------------------------------
 np.random.seed(42)
 
@@ -61,29 +61,32 @@ ACCELERATORS = [
     "AI at the frontline x Barnsley",
 ]
 
-SURVEY_WAVES = ["Baseline", "Midline", "Endline"]
+SURVEY_WAVES = ["Wave 1", "Wave 2", "Wave 3"]
 
-# Survey umbrella categories and modules
-SURVEY_STRUCTURE = {
-    "Organisational context": [
-        "Mission orientation",
-        "Organisational culture",
-        "Psychological safety",
-    ],
-    "Capability": [
-        "Evaluative capability",
-        "Adaptive capability & responsiveness",
-        "Decision-making capability",
-        "Relational capability",
-    ],
-    "Capacity": [
-        "Resource availability",
-        "Resource efficiency",
-        "Funding & financial investment",
-        "Digital infrastructure",
-        "Working in the open",
-    ],
-}
+# Likert-style item battery
+SURVEY_QUESTIONS = [
+    "Developing ways to measure if project outcomes are being achieved",
+    "Gathering and analysing data to measure if project outcomes are being achieved",
+    "Assessing the quality of data used in measuring project outcomes",
+    "Using data to determine if long-term strategic goals are being achieved",
+]
+
+LIKERT_OPTIONS = [
+    "1 = To no extent",
+    "2 = To a small extent",
+    "3 = To a moderate extent",
+    "4 = To a great extent",
+    "5 = To a very great extent",
+]
+
+# ONS-style diverging Likert palette (approximate)
+LIKERT_COLOURS = [
+    "#CC1F24",  # strong negative
+    "#F46A25",  # small extent
+    "#D9D9D9",  # neutral
+    "#2CA3A3",  # great extent
+    "#005F83",  # very great extent
+]
 
 OUTCOMES = ["Outcome 1", "Outcome 2", "Outcome 3", "Outcome 4"]
 
@@ -121,31 +124,43 @@ QUAL_THEMATIC_GROUPS = [
     "Contextual factors",
 ]
 
-# ---- Survey data (dummy, 0–100) ----------------------------------
-survey_rows = []
+# -------------------------------------------------------------------
+# DUMMY SURVEY DATA (LIKERT DISTRIBUTIONS)
+# -------------------------------------------------------------------
+likert_rows = []
 for acc in ACCELERATORS:
-    base_level = np.random.uniform(45, 65)
-    for umbrella, modules in SURVEY_STRUCTURE.items():
-        for module in modules:
-            drift = np.random.uniform(-3, 8)  # improvement over waves
-            for i, wave in enumerate(SURVEY_WAVES):
-                score = base_level + i * drift + np.random.normal(0, 3)
-                survey_rows.append(
+    for wave in SURVEY_WAVES:
+        for q in SURVEY_QUESTIONS:
+            # Bias slightly towards "moderate" and "great extent"
+            probs = np.random.dirichlet([1.0, 1.5, 2.5, 2.5, 1.5])
+            n = 80  # pretend 80 respondents
+            counts = np.random.multinomial(n, probs)
+
+            for i, likert in enumerate(LIKERT_OPTIONS, start=1):
+                count = counts[i - 1]
+                percent = count / n * 100
+                likert_rows.append(
                     {
                         "Accelerator": acc,
                         "Wave": wave,
-                        "Umbrella": umbrella,
-                        "Module": module,
-                        "Score": np.clip(score, 0, 100),
+                        "Question": q,
+                        "Likert": likert,
+                        "Score": i,       # 1–5
+                        "Count": count,
+                        "Percent": percent,
                     }
                 )
-survey_df = pd.DataFrame(survey_rows)
 
-# ---- Quantitative impact data (dummy DiD-style effect sizes) ------
+survey_df = pd.DataFrame(likert_rows)
+survey_df["Weighted"] = survey_df["Score"] * survey_df["Percent"]
+
+# -------------------------------------------------------------------
+# DUMMY QUANT DATA (DiD-STYLE EFFECTS)
+# -------------------------------------------------------------------
 quant_rows = []
 for acc in ACCELERATORS:
     for outcome in OUTCOMES:
-        eff = np.random.normal(0.05, 0.04)  # mean 5 percentage points
+        eff = np.random.normal(0.05, 0.04)  # mean +5 ppts
         se = np.random.uniform(0.01, 0.03)
         ci_low = eff - 1.96 * se
         ci_high = eff + 1.96 * se
@@ -154,7 +169,7 @@ for acc in ACCELERATORS:
             {
                 "Accelerator": acc,
                 "Outcome": outcome,
-                "Effect_size": eff,  # absolute (e.g. 0.06 = +6 ppts)
+                "Effect_size": eff,
                 "CI_low": ci_low,
                 "CI_high": ci_high,
                 "p_value": p_val,
@@ -162,7 +177,9 @@ for acc in ACCELERATORS:
         )
 quant_df = pd.DataFrame(quant_rows)
 
-# ---- Qualitative theme counts (dummy coded segments) ---------------
+# -------------------------------------------------------------------
+# DUMMY QUAL DATA (CODED SEGMENTS BY GROUP)
+# -------------------------------------------------------------------
 qual_rows = []
 for acc in ACCELERATORS:
     for doc in QUAL_DOC_GROUPS:
@@ -183,11 +200,13 @@ for acc in ACCELERATORS:
                     )
 qual_df = pd.DataFrame(qual_rows)
 
-# ---- VfI / cost-effectiveness style dummy data ---------------------
+# -------------------------------------------------------------------
+# DUMMY VfI DATA
+# -------------------------------------------------------------------
 vfi_rows = []
 for acc in ACCELERATORS:
     cost = np.random.uniform(800, 1800)  # cost per participant
-    benefit = cost * np.random.uniform(0.8, 2.0)  # monetised benefit
+    benefit = cost * np.random.uniform(0.8, 2.0)
     bcr = benefit / cost
     vfi_rows.append(
         {
@@ -213,13 +232,6 @@ st.sidebar.markdown("<h3 style='color:#4B0082;'>Filters</h3>", unsafe_allow_html
 
 # Accelerator selector
 selected_accelerator = st.sidebar.selectbox("Select accelerator", ACCELERATORS)
-
-# Wave filter (for survey plots)
-selected_waves = st.sidebar.multiselect(
-    "Survey waves",
-    SURVEY_WAVES,
-    default=SURVEY_WAVES,
-)
 
 # Theme / colour options
 chart_color = st.sidebar.color_picker("Pick accent colour", "#2E86C1")
@@ -248,7 +260,7 @@ if theme == "Dark":
 # Sidebar info
 st.sidebar.info(
     "Dummy dashboard illustrating how the TLG evaluation can be structured "
-    "across qualitative, survey, quantitative, and value-for-investment strands."
+    "across qualitative, survey (Likert), quantitative, and value-for-investment strands."
 )
 
 # -------------------------------------------------------------------
@@ -270,38 +282,29 @@ st.markdown("---")
 # -------------------------------------------------------------------
 col1, col2, col3 = st.columns(3)
 
-# Dummy survey metric
+# Survey metric: average Likert score (1–5) across questions & waves
 acc_survey = survey_df[survey_df["Accelerator"] == selected_accelerator]
-avg_score = acc_survey["Score"].mean()
+mean_score = acc_survey["Weighted"].sum() / acc_survey["Percent"].sum()
 
-# Dummy quant “share of outcomes significantly > 0”
+# Quant metric: share of outcomes with p < 0.05
 acc_quant = quant_df[quant_df["Accelerator"] == selected_accelerator]
 sig_share = (acc_quant["p_value"] < 0.05).mean() * 100
 
-# Dummy VfI BCR
+# VfI metric
 acc_vfi = vfi_df[vfi_df["Accelerator"] == selected_accelerator].iloc[0]
 
 with col1:
-    st.metric(
-        "Avg survey score (0–100)",
-        f"{avg_score:,.1f}",
-    )
+    st.metric("Mean survey score (1–5)", f"{mean_score:,.2f}")
 with col2:
-    st.metric(
-        "% outcomes with p < 0.05",
-        f"{sig_share:,.0f}%",
-    )
+    st.metric("% outcomes with p < 0.05", f"{sig_share:,.0f}%")
 with col3:
-    st.metric(
-        "Benefit–cost ratio",
-        f"{acc_vfi['Benefit_cost_ratio']:,.2f}x",
-    )
+    st.metric("Benefit–cost ratio", f"{acc_vfi['Benefit_cost_ratio']:,.2f}x")
 
 # -------------------------------------------------------------------
 # TABS FOR STRANDS
 # -------------------------------------------------------------------
 tab_qual, tab_survey, tab_quant, tab_vfi = st.tabs(
-    ["📋 Qualitative evaluation", "📊 Survey", "📈 Quantitative impact", "💷 Value for Investment"]
+    ["📋 Qualitative evaluation", "📊 Survey (Likert)", "📈 Quantitative impact", "💷 Value for Investment"]
 )
 
 # ------------------------ QUALITATIVE TAB ---------------------------
@@ -328,7 +331,6 @@ with tab_qual:
     if selected_phase != "All":
         acc_qual = acc_qual[acc_qual["Phase"] == selected_phase]
 
-    # Aggregate to thematic group level
     thematic_summary = (
         acc_qual.groupby("Thematic_group", as_index=False)["Mentions"]
         .sum()
@@ -353,77 +355,77 @@ with tab_qual:
     st.markdown("#### How this reflects the qualitative approach")
     st.markdown(
         """
-        - **Document groups** (e.g. interviews, weeknotes, observations) are treated as stable
-          characteristics of the data and used here as filters rather than analytical codes.  
-        - **Infrastructure codes** such as *phase* and *level of analysis* (programme, accelerator,
-          central, local, delivery partners) structure where and when evidence arises.  
-        - **Thematic groups** provide deductive scaffolding aligned with the TLG Theory of Change:
-          TLG practices, enablers, barriers, mechanisms, outcomes, sustainability & scaling,
-          governance & partnership, and contextual factors.  
+        - **Document groups** (interviews, weeknotes, observations, programme documents) are
+          treated as stable document attributes and used here as filters.  
+        - **Infrastructure codes** (phase, level of analysis) structure where and when evidence arises.  
+        - **Thematic groups** mirror the deductive scaffolding: TLG practices, enablers, barriers,
+          mechanisms of change, outcomes, sustainability & scaling, governance & partnership, and context.  
         - Within each thematic group, inductive subcodes would capture specific routines, behaviours,
-          constraints, and outcomes as they emerge from the material.
+          constraints and outcomes as they emerge from the material.
         """
     )
 
-# ------------------------ SURVEY TAB -------------------------------
+# ------------------------ SURVEY TAB (LIKERT) -----------------------
 with tab_survey:
-    st.subheader("Survey of ways of working")
+    st.subheader("Survey of ways of working – Likert distribution")
 
-    acc_survey = survey_df[survey_df["Accelerator"] == selected_accelerator].copy()
-    if selected_waves:
-        acc_survey = acc_survey[acc_survey["Wave"].isin(selected_waves)]
-
-    # Aggregated view by umbrella category
-    umbrella_summary = (
-        acc_survey.groupby(["Umbrella", "Wave"], as_index=False)["Score"].mean()
+    # Wave selector INSIDE the tab (not in sidebar)
+    selected_wave = st.radio(
+        "Select survey wave",
+        SURVEY_WAVES,
+        horizontal=True,
     )
 
-    st.markdown("**Average scores by umbrella category (Organisational context / Capability / Capacity)**")
-    fig_umbrella = px.bar(
-        umbrella_summary,
-        x="Umbrella",
-        y="Score",
-        color="Wave",
-        barmode="group",
-        title="Average survey scores by umbrella category and wave (dummy)",
-    )
-    fig_umbrella.update_yaxes(range=[0, 100], title="Score (0–100)")
-    st.plotly_chart(fig_umbrella, use_container_width=True)
+    wave_df = survey_df[
+        (survey_df["Accelerator"] == selected_accelerator)
+        & (survey_df["Wave"] == selected_wave)
+    ].copy()
 
-    st.markdown("**Module-level view**")
-
-    selected_umbrella = st.selectbox(
-        "Focus on umbrella category",
-        ["All"] + list(SURVEY_STRUCTURE.keys()),
+    # Ensure Likert categories plotted in the right order
+    wave_df["Likert"] = pd.Categorical(
+        wave_df["Likert"],
+        categories=LIKERT_OPTIONS,
+        ordered=True,
     )
 
-    module_df = acc_survey.copy()
-    if selected_umbrella != "All":
-        module_df = module_df[module_df["Umbrella"] == selected_umbrella]
-
-    fig_modules = px.line(
-        module_df,
-        x="Wave",
-        y="Score",
-        color="Module",
-        markers=True,
-        title="Survey modules by wave (dummy)",
-    )
-    fig_modules.update_traces(line=dict(width=3))
-    fig_modules.update_yaxes(range=[0, 100])
-    st.plotly_chart(fig_modules, use_container_width=True)
-
-    st.markdown("#### Conceptual alignment")
     st.markdown(
         """
-        - **Organisational context** modules proxy mission orientation, culture and trust,
-          and psychological safety – the backdrop against which TLG practices land.  
-        - **Capability** modules capture evaluative, adaptive, decision-making, and relational
-          capabilities – the ability to generate, interpret and act on feedback.  
-        - **Capacity** modules reflect resourcing, digital infrastructure, funding, and
-          working-in-the-open – the Grow “foundations” that shape what is feasible.  
-        - In the real survey, these modules would be operationalised with items drawn from
-          established scales (e.g. Moynihan & Landuyt; Moynihan & Pandey; Edmondson; etc.).
+        **Question battery**
+
+        *Thinking about your most recent project, to what extent, if at all, were you involved in the following activities?*  
+        Response scale (1–5):
+
+        1 = To no extent  
+        2 = To a small extent  
+        3 = To a moderate extent  
+        4 = To a great extent  
+        5 = To a very great extent  
+        """
+    )
+
+    fig_likert = px.bar(
+        wave_df,
+        x="Question",
+        y="Percent",
+        color="Likert",
+        barmode="stack",
+        title=f"Distribution of responses by question – {selected_wave} (dummy)",
+        color_discrete_sequence=LIKERT_COLOURS,
+        category_orders={"Likert": LIKERT_OPTIONS},
+    )
+    fig_likert.update_layout(
+        yaxis_title="Percent of respondents",
+        xaxis_title="Question",
+        legend_title="Response",
+    )
+    st.plotly_chart(fig_likert, use_container_width=True)
+
+    st.markdown(
+        """
+        This stacked Likert chart mirrors the intended reporting structure:  
+        - A common **question stem** with several activities in a grid.  
+        - A 5-point **extent** scale using a diverging palette from “to no extent” to “to a very great extent”.  
+        - Wave selection handled within the tab rather than in the global filters.
         """
     )
 
@@ -501,7 +503,7 @@ with tab_vfi:
         **Interpretation (dummy narrative):**  
         - Values shown here are *illustrative only*.  
         - In the real evaluation, this strand would combine incremental costs from MI/admin data
-          with monetised benefits (e.g., reduced demand, improved outcomes) to estimate VfI.
+          with monetised benefits (for example reduced demand, improved outcomes) to estimate VfI.
         """
     )
 

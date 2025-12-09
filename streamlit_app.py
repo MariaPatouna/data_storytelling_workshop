@@ -63,30 +63,77 @@ ACCELERATORS = [
 
 SURVEY_WAVES = ["Wave 1", "Wave 2", "Wave 3"]
 
-# Likert-style item battery
-SURVEY_QUESTIONS = [
-    "Developing ways to measure if project outcomes are being achieved",
-    "Gathering and analysing data to measure if project outcomes are being achieved",
-    "Assessing the quality of data used in measuring project outcomes",
-    "Using data to determine if long-term strategic goals are being achieved",
-]
-
-LIKERT_OPTIONS = [
-    "1 = To no extent",
-    "2 = To a small extent",
-    "3 = To a moderate extent",
-    "4 = To a great extent",
-    "5 = To a very great extent",
-]
-
 # ONS-style diverging Likert palette (approximate)
-LIKERT_COLOURS = [
+ONS_5 = [
     "#CC1F24",  # strong negative
-    "#F46A25",  # small extent
+    "#F46A25",  # small extent / disagree
     "#D9D9D9",  # neutral
-    "#2CA3A3",  # great extent
-    "#005F83",  # very great extent
+    "#2CA3A3",  # great extent / agree
+    "#005F83",  # very great extent / strongly agree
 ]
+ONS_DK = "#B3B3B3"  # Don't know / NA
+
+# Two batteries: metadata, questions, scales, colours
+BATTERIES = {
+    "Involvement in measuring outcomes": {
+        "stem": (
+            "Thinking about your **most recent project**, to what extent, if at all, "
+            "were you involved in the following activities?"
+        ),
+        "questions": [
+            "Developing ways to measure\nif project outcomes are being achieved",
+            "Gathering and analysing data\nto measure if project outcomes\nare being achieved",
+            "Assessing the quality of data\nused in measuring project outcomes",
+            "Using data to determine if\nlong-term strategic goals\nare being achieved",
+        ],
+        "likert_options": [
+            "1 = To no extent",
+            "2 = To a small extent",
+            "3 = To a moderate extent",
+            "4 = To a great extent",
+            "5 = To a very great extent",
+        ],
+        "scale_text": [
+            "1 = To no extent",
+            "2 = To a small extent",
+            "3 = To a moderate extent",
+            "4 = To a great extent",
+            "5 = To a very great extent",
+        ],
+        "palette": ONS_5,
+        "has_dk": False,
+    },
+    "Team learning and feedback culture": {
+        "stem": (
+            "Thinking about **your team**, to what extent do you agree or disagree "
+            "with the following statements?"
+        ),
+        "questions": [
+            "We are encouraged\nto learn from our mistakes.",
+            "We use feedback from those we serve\nto improve performance.",
+            "We integrate information\nand act intelligently on that information.",
+            "I believe we will use the insights\nfrom this survey to improve our work.",
+        ],
+        "likert_options": [
+            "1 = Strongly disagree",
+            "2 = Disagree",
+            "3 = Feel neutral",
+            "4 = Agree",
+            "5 = Strongly agree",
+            "6 = Don’t know / not applicable",
+        ],
+        "scale_text": [
+            "1 = Strongly disagree",
+            "2 = Disagree",
+            "3 = Feel neutral",
+            "4 = Agree",
+            "5 = Strongly agree",
+            "6 = Don’t know / not applicable",
+        ],
+        "palette": ONS_5 + [ONS_DK],
+        "has_dk": True,
+    },
+}
 
 OUTCOMES = ["Outcome 1", "Outcome 2", "Outcome 3", "Outcome 4"]
 
@@ -125,31 +172,44 @@ QUAL_THEMATIC_GROUPS = [
 ]
 
 # -------------------------------------------------------------------
-# DUMMY SURVEY DATA (LIKERT DISTRIBUTIONS)
+# DUMMY SURVEY DATA (LIKERT DISTRIBUTIONS FOR BOTH BATTERIES)
 # -------------------------------------------------------------------
 likert_rows = []
 for acc in ACCELERATORS:
     for wave in SURVEY_WAVES:
-        for q in SURVEY_QUESTIONS:
-            # Bias slightly towards "moderate" and "great extent"
-            probs = np.random.dirichlet([1.0, 1.5, 2.5, 2.5, 1.5])
-            n = 80  # pretend 80 respondents
-            counts = np.random.multinomial(n, probs)
+        for battery_name, meta in BATTERIES.items():
+            questions = meta["questions"]
+            likert_opts = meta["likert_options"]
+            has_dk = meta["has_dk"]
 
-            for i, likert in enumerate(LIKERT_OPTIONS, start=1):
-                count = counts[i - 1]
-                percent = count / n * 100
-                likert_rows.append(
-                    {
-                        "Accelerator": acc,
-                        "Wave": wave,
-                        "Question": q,
-                        "Likert": likert,
-                        "Score": i,       # 1–5
-                        "Count": count,
-                        "Percent": percent,
-                    }
-                )
+            for q in questions:
+                # Bias slightly towards middle / positive categories
+                probs = np.random.dirichlet([1.0] * len(likert_opts))
+                n = 80
+                counts = np.random.multinomial(n, probs)
+
+                for i, likert in enumerate(likert_opts, start=1):
+                    count = counts[i - 1]
+                    percent = count / n * 100
+
+                    # Don't-know category gets no score
+                    if has_dk and "Don’t know" in likert:
+                        score = np.nan
+                    else:
+                        score = i
+
+                    likert_rows.append(
+                        {
+                            "Accelerator": acc,
+                            "Wave": wave,
+                            "Battery": battery_name,
+                            "Question": q,
+                            "Likert": likert,
+                            "Score": score,  # may be NaN for DK
+                            "Count": count,
+                            "Percent": percent,
+                        }
+                    )
 
 survey_df = pd.DataFrame(likert_rows)
 survey_df["Weighted"] = survey_df["Score"] * survey_df["Percent"]
@@ -282,9 +342,10 @@ st.markdown("---")
 # -------------------------------------------------------------------
 col1, col2, col3 = st.columns(3)
 
-# Survey metric: average Likert score (1–5) across questions & waves
+# Survey metric: average Likert score (1–5) across batteries, questions & waves (excluding DK)
 acc_survey = survey_df[survey_df["Accelerator"] == selected_accelerator]
-mean_score = acc_survey["Weighted"].sum() / acc_survey["Percent"].sum()
+mask = acc_survey["Score"].notna()
+mean_score = acc_survey.loc[mask, "Weighted"].sum() / acc_survey.loc[mask, "Percent"].sum()
 
 # Quant metric: share of outcomes with p < 0.05
 acc_quant = quant_df[quant_df["Accelerator"] == selected_accelerator]
@@ -369,63 +430,101 @@ with tab_qual:
 with tab_survey:
     st.subheader("Survey of ways of working – Likert distribution")
 
-    # Wave selector INSIDE the tab (not in sidebar)
+    # Wave selector INSIDE the tab
     selected_wave = st.radio(
         "Select survey wave",
         SURVEY_WAVES,
         horizontal=True,
     )
 
+    # Battery selector (the two question sets)
+    selected_battery = st.selectbox(
+        "Select question set",
+        list(BATTERIES.keys()),
+    )
+    meta = BATTERIES[selected_battery]
+    questions = meta["questions"]
+    likert_opts = meta["likert_options"]
+    palette = meta["palette"]
+
     wave_df = survey_df[
         (survey_df["Accelerator"] == selected_accelerator)
         & (survey_df["Wave"] == selected_wave)
+        & (survey_df["Battery"] == selected_battery)
     ].copy()
 
-    # Ensure Likert categories plotted in the right order
+    # Ordering for axes
     wave_df["Likert"] = pd.Categorical(
         wave_df["Likert"],
-        categories=LIKERT_OPTIONS,
+        categories=likert_opts,
+        ordered=True,
+    )
+    wave_df["Question"] = pd.Categorical(
+        wave_df["Question"],
+        categories=questions,
         ordered=True,
     )
 
-    st.markdown(
-        """
-        **Question battery**
+    # Question stem + scale text
+    st.markdown(f"**Question stem**  \n{meta['stem']}")
+    st.markdown("**Response scale**")
+    for line in meta["scale_text"]:
+        st.markdown(f"- {line}")
 
-        *Thinking about your most recent project, to what extent, if at all, were you involved in the following activities?*  
-        Response scale (1–5):
-
-        1 = To no extent  
-        2 = To a small extent  
-        3 = To a moderate extent  
-        4 = To a great extent  
-        5 = To a very great extent  
-        """
-    )
-
+    # Horizontal stacked bar chart, ONS-style
     fig_likert = px.bar(
         wave_df,
-        x="Question",
-        y="Percent",
+        x="Percent",
+        y="Question",
         color="Likert",
+        orientation="h",
         barmode="stack",
-        title=f"Distribution of responses by question – {selected_wave} (dummy)",
-        color_discrete_sequence=LIKERT_COLOURS,
-        category_orders={"Likert": LIKERT_OPTIONS},
+        title=f"Distribution of responses by question – {selected_battery}, {selected_wave} (dummy)",
+        color_discrete_sequence=palette,
+        category_orders={
+            "Likert": likert_opts,
+            "Question": list(reversed(questions)),
+        },
     )
+
     fig_likert.update_layout(
-        yaxis_title="Percent of respondents",
-        xaxis_title="Question",
+        xaxis_title="Percent of respondents",
+        yaxis_title="",
+        xaxis=dict(
+            range=[0, 100],
+            ticks="outside",
+            tick0=0,
+            dtick=20,
+            showgrid=True,
+            gridcolor="#E5E5E5",
+            zeroline=False,
+        ),
+        yaxis=dict(showgrid=False),
         legend_title="Response",
+        plot_bgcolor="#FFFFFF",
+        paper_bgcolor="#FFFFFF",
+        bargap=0.25,
+        margin=dict(l=260, r=40, t=80, b=60),
     )
+
+    # Data labels inside bars
+    fig_likert.update_traces(
+        texttemplate="%{x:.0f}%",
+        textposition="inside",
+        insidetextanchor="middle",
+        textfont=dict(color="#FFFFFF", size=11),
+        hovertemplate="<b>%{y}</b><br>%{legendgroup}<br>%{x:.1f}%<extra></extra>",
+    )
+
     st.plotly_chart(fig_likert, use_container_width=True)
 
     st.markdown(
         """
-        This stacked Likert chart mirrors the intended reporting structure:  
-        - A common **question stem** with several activities in a grid.  
-        - A 5-point **extent** scale using a diverging palette from “to no extent” to “to a very great extent”.  
-        - Wave selection handled within the tab rather than in the global filters.
+        This layout mirrors the ONS horizontal bar style:
+
+        - One stacked bar per activity/statement, labelled on the left with manual line breaks.  
+        - Diverging **ONS palette** from negative to positive responses, with a separate neutral/DK tone where applicable.  
+        - 0–100% scale with light gridlines to support quick comparison across items and waves.
         """
     )
 

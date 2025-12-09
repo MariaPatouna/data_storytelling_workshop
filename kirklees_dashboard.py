@@ -14,7 +14,6 @@ st.set_page_config(
 # ---------------------------------------------------------
 # DATA
 # ---------------------------------------------------------
-# Annual Population Survey – Kirklees, age 16–64
 periods = [
     "2015-16",
     "2016-17",
@@ -49,47 +48,36 @@ df = pd.DataFrame(
     }
 )
 
-# Split: pre-KBOP (2015-16 to 2020-21) vs KBOP period (2021-22 onwards)
+# split at 2021–22
 split_period = "2021-22"
 split_idx = df.index[df["Period"] == split_period][0]
 
 # ONS colours
-PRE_COLOUR = "#959495"   # previous time period – Vintage grey
-CURR_COLOUR = "#206095"  # current time period – Ocean blue
+PRE_COLOUR = "#959495"
+CURR_COLOUR = "#206095"
 PRE_SHADE = "rgba(149,148,149,0.25)"
 CURR_SHADE = "rgba(32,96,149,0.25)"
 
 # ---------------------------------------------------------
 # FIGURE FACTORY
 # ---------------------------------------------------------
-def make_metric_figure(
-    df,
-    value_col,
-    ci_col,
-    title,
-    y_min,
-    y_max,
-):
-    """Return a Plotly figure for a single metric with CI bands,
-    pre/KBOP colour split, and an average dashed line."""
+def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
+
     fig = go.Figure()
 
     # CI bounds
     ci_low = df[value_col] - df[ci_col]
     ci_high = df[value_col] + df[ci_col]
 
-    # Pre-KBOP segment (up to 2020-21)
     pre = df.iloc[: split_idx + 1]
+    curr = df.iloc[split_idx:]
+
     pre_low = ci_low.iloc[: split_idx + 1]
     pre_high = ci_high.iloc[: split_idx + 1]
-
-    # KBOP segment (from 2021-22 onwards)
-    curr = df.iloc[split_idx:]
     curr_low = ci_low.iloc[split_idx:]
     curr_high = ci_high.iloc[split_idx:]
 
-    # --- CI bands (pre and current) ---
-    # Pre-KBOP CI
+    # pre CI
     fig.add_trace(
         go.Scatter(
             x=list(pre["Period"]) + list(pre["Period"][::-1]),
@@ -102,7 +90,7 @@ def make_metric_figure(
         )
     )
 
-    # KBOP CI
+    # post CI
     fig.add_trace(
         go.Scatter(
             x=list(curr["Period"]) + list(curr["Period"][::-1]),
@@ -115,8 +103,7 @@ def make_metric_figure(
         )
     )
 
-    # --- Lines (pre and current) ---
-    # Pre-KBOP line
+    # pre-KBOP line — NO MARKERS
     fig.add_trace(
         go.Scatter(
             x=pre["Period"],
@@ -124,24 +111,21 @@ def make_metric_figure(
             mode="lines",
             line=dict(color=PRE_COLOUR, width=3),
             name="Pre-KBOP period (2015–16 to 2020–21)",
-            showlegend=True,
         )
     )
 
-    # KBOP line
+    # KBOP line — NO MARKERS
     fig.add_trace(
         go.Scatter(
             x=curr["Period"],
             y=curr[value_col],
-            mode="lines+markers",
+            mode="lines",
             line=dict(color=CURR_COLOUR, width=3),
-            marker=dict(size=6),
             name="KBOP period (2021–22 to 2024–25)",
-            showlegend=True,
         )
     )
 
-    # Average line across whole period
+    # Average line
     avg_val = df[value_col].mean()
     fig.add_hline(
         y=avg_val,
@@ -152,7 +136,6 @@ def make_metric_figure(
         annotation_font=dict(size=11, color="#595959"),
     )
 
-    # Layout
     fig.update_layout(
         title=title,
         title_x=0.0,
@@ -179,12 +162,10 @@ def make_metric_figure(
             y=1.0,
             xanchor="left",
             x=1.02,
-            bordercolor="rgba(0,0,0,0)",
         ),
     )
 
     return fig
-
 
 # ---------------------------------------------------------
 # PAGE CONTENT
@@ -198,44 +179,25 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Employment
-fig_emp = make_metric_figure(
-    df,
-    value_col="Employment_pct",
-    ci_col="Employment_ci",
-    title="Employment rate (16–64)",
-    y_min=60,
-    y_max=80,
+st.plotly_chart(
+    make_metric_figure(df, "Employment_pct", "Employment_ci", "Employment rate (16–64)", 60, 80),
+    use_container_width=True,
 )
-st.plotly_chart(fig_emp, use_container_width=True)
 
-# Unemployment
-fig_unemp = make_metric_figure(
-    df,
-    value_col="Unemp_pct",
-    ci_col="Unemp_ci",
-    title="Unemployment rate (16–64)",
-    y_min=0,
-    y_max=8,
+st.plotly_chart(
+    make_metric_figure(df, "Unemp_pct", "Unemp_ci", "Unemployment rate (16–64)", 0, 8),
+    use_container_width=True,
 )
-st.plotly_chart(fig_unemp, use_container_width=True)
 
-# Economic inactivity
-fig_inact = make_metric_figure(
-    df,
-    value_col="Inact_pct",
-    ci_col="Inact_ci",
-    title="Economic inactivity rate (16–64)",
-    y_min=15,
-    y_max=30,
+st.plotly_chart(
+    make_metric_figure(df, "Inact_pct", "Inact_ci", "Economic inactivity rate (16–64)", 15, 30),
+    use_container_width=True,
 )
-st.plotly_chart(fig_inact, use_container_width=True)
 
-# Minimal source text
 st.markdown(
     """
-    **Source:** ONS Annual Population Survey (APS), Kirklees residents aged 16–64.  
-    Confidence intervals shown at the 95% level.  
-    Visual style informed by the [ONS design guidance](https://ons-design.notion.site/314386f7916e497baae8118a782911f5).
-    """
+**Source:** ONS Annual Population Survey (APS), Kirklees residents aged 16–64.  
+Confidence intervals shown at the 95% level.  
+Visual style informed by the ONS design guidance.
+"""
 )

@@ -1,264 +1,193 @@
-import io
-
-import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
 
-# -------------------------------------------------------------------
-# PAGE CONFIG
-# -------------------------------------------------------------------
+# -------------------------------------------------------
+# PAGE SETUP
+# -------------------------------------------------------
 st.set_page_config(
-    page_title="Kirklees labour-market context",
+    page_title="Kirklees labour market – APS",
     layout="wide",
-    page_icon="📈",
+    page_icon="📉",
 )
 
-# -------------------------------------------------------------------
-# BASIC STYLING (ONS-ish)
-# -------------------------------------------------------------------
 st.markdown(
-    """
-    <style>
-    * {
-        font-family: "Arial", sans-serif;
-    }
-    /* tighten layout a bit */
-    .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 3rem;
-        padding-left: 3rem;
-        padding-right: 3rem;
-    }
-    </style>
-    """,
+    "<h1 style='color:#1B4F72;'>Employment, unemployment and economic inactivity over time</h1>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<h3 style='color:#4D4D4D;'>Kirklees, age 16–64 – 12-month APS periods</h3>",
     unsafe_allow_html=True,
 )
 
-# ONS colour approximations
-ONS_BLUE = "#12436D"   # employment
-ONS_RED = "#D4351C"    # unemployment
-ONS_GREY = "#6F777B"   # inactivity
-ONS_LIGHT_GREY = "#E5E5E5"
+# -------------------------------------------------------
+# DATA
+# -------------------------------------------------------
+data = [
+    {"Period": "Jul 2015-Jun 2016", "emp_pct": 70.0, "emp_conf": 3.1,
+     "unemp_pct": 5.1, "unemp_conf": 1.7, "inactive_pct": 26.2, "inactive_conf": 3.0},
+    {"Period": "Jul 2016-Jun 2017", "emp_pct": 70.7, "emp_conf": 3.0,
+     "unemp_pct": 6.4, "unemp_conf": 1.9, "inactive_pct": 24.4, "inactive_conf": 2.9},
+    {"Period": "Jul 2017-Jun 2018", "emp_pct": 70.5, "emp_conf": 3.0,
+     "unemp_pct": 4.5, "unemp_conf": 1.6, "inactive_pct": 26.2, "inactive_conf": 2.9},
+    {"Period": "Jul 2018-Jun 2019", "emp_pct": 71.9, "emp_conf": 2.8,
+     "unemp_pct": 4.1, "unemp_conf": 1.5, "inactive_pct": 25.0, "inactive_conf": 2.7},
+    {"Period": "Jul 2019-Jun 2020", "emp_pct": 73.6, "emp_conf": 3.0,
+     "unemp_pct": 1.8, "unemp_conf": 1.0, "inactive_pct": 25.0, "inactive_conf": 3.0},
+    {"Period": "Jul 2020-Jun 2021", "emp_pct": 69.9, "emp_conf": 3.4,
+     "unemp_pct": 5.9, "unemp_conf": 2.0, "inactive_pct": 25.7, "inactive_conf": 3.3},
+    {"Period": "Jul 2021-Jun 2022", "emp_pct": 73.7, "emp_conf": 3.4,
+     "unemp_pct": 2.3, "unemp_conf": 1.3, "inactive_pct": 24.6, "inactive_conf": 3.3},
+    {"Period": "Jul 2022-Jun 2023", "emp_pct": 72.7, "emp_conf": 3.9,
+     "unemp_pct": 4.8, "unemp_conf": 2.2, "inactive_pct": 23.6, "inactive_conf": 3.8},
+    {"Period": "Jul 2023-Jun 2024", "emp_pct": 74.1, "emp_conf": 4.0,
+     "unemp_pct": 3.3, "unemp_conf": 1.9, "inactive_pct": 23.3, "inactive_conf": 3.9},
+    {"Period": "Jul 2024-Jun 2025", "emp_pct": 76.4, "emp_conf": 3.2,
+     "unemp_pct": 5.1, "unemp_conf": 1.8, "inactive_pct": 19.5, "inactive_conf": 3.0},
+]
 
-# -------------------------------------------------------------------
-# DATA: ANNUAL POPULATION SURVEY – KIRKLEES
-# -------------------------------------------------------------------
-APS_CSV = """Date,emp_num,emp_den,emp_pct,emp_conf,unemp_num,unemp_den,unemp_pct,unemp_conf,inact_num,inact_den,inact_pct,inact_conf
-Jul 2015-Jun 2016,188600,269500,70.0,3.1,10200,198800,5.1,1.7,70700,269500,26.2,3.0
-Jul 2016-Jun 2017,193000,272800,70.7,3.0,13200,206100,6.4,1.9,66700,272800,24.4,2.9
-Jul 2017-Jun 2018,192900,273700,70.5,3.0,9000,202000,4.5,1.6,71800,273700,26.2,2.9
-Jul 2018-Jun 2019,195000,271200,71.9,2.8,8400,203400,4.1,1.5,67800,271200,25.0,2.7
-Jul 2019-Jun 2020,200000,271500,73.6,3.0,3600,203500,1.8,1.0,68000,271500,25.0,3.0
-Jul 2020-Jun 2021,190400,272200,69.9,3.4,12000,202400,5.9,2.0,69800,272200,25.7,3.3
-Jul 2021-Jun 2022,200800,272600,73.7,3.4,4700,205500,2.3,1.3,67100,272600,24.6,3.3
-Jul 2022-Jun 2023,200200,275200,72.7,3.9,10200,210300,4.8,2.2,64800,275200,23.6,3.8
-Jul 2023-Jun 2024,203500,274500,74.1,4.0,6900,210500,3.3,1.9,64000,274500,23.3,3.9
-Jul 2024-Jun 2025,209400,273900,76.4,3.2,11200,220600,5.1,1.8,53300,273900,19.5,3.0
-"""
+df = pd.DataFrame(data)
 
-df = pd.read_csv(io.StringIO(APS_CSV))
+# Short, reader-friendly period labels: e.g. "2015–16"
+df["Period_short"] = df["Period"].str.slice(4, 8) + "–" + df["Period"].str.slice(-2)
 
-# Create a cleaner label for the x axis
-df["Period"] = df["Date"]
-
-# Confidence interval bounds
+# CI bounds
 df["emp_low"] = df["emp_pct"] - df["emp_conf"]
 df["emp_high"] = df["emp_pct"] + df["emp_conf"]
-df["inact_low"] = df["inact_pct"] - df["inact_conf"]
-df["inact_high"] = df["inact_pct"] + df["inact_conf"]
 
-# Long format for multi-series chart
-rates_long = df.melt(
-    id_vars=["Period"],
-    value_vars=["emp_pct", "unemp_pct", "inact_pct"],
-    var_name="Indicator",
-    value_name="Percent",
-)
+df["unemp_low"] = df["unemp_pct"] - df["unemp_conf"]
+df["unemp_high"] = df["unemp_pct"] + df["unemp_conf"]
 
-indicator_labels = {
-    "emp_pct": "Employment rate (16–64)",
-    "unemp_pct": "Unemployment rate (16–64)",
-    "inact_pct": "Economic inactivity rate (16–64)",
-}
-rates_long["Indicator"] = rates_long["Indicator"].map(indicator_labels)
+df["inactive_low"] = df["inactive_pct"] - df["inactive_conf"]
+df["inactive_high"] = df["inactive_pct"] + df["inactive_conf"]
 
-indicator_colors = {
-    "Employment rate (16–64)": ONS_BLUE,
-    "Unemployment rate (16–64)": ONS_RED,
-    "Economic inactivity rate (16–64)": ONS_GREY,
-}
+# Ensure categorical order along x-axis
+df["Period_short"] = pd.Categorical(df["Period_short"], categories=list(df["Period_short"]), ordered=True)
 
-# -------------------------------------------------------------------
-# TITLE + NARRATIVE
-# -------------------------------------------------------------------
-st.title("Kirklees labour-market context – Annual Population Survey")
+# -------------------------------------------------------
+# HELPER: CI LINE CHART
+# -------------------------------------------------------
+def make_ci_chart(
+    x,
+    y,
+    low,
+    high,
+    title,
+    colour_line,
+    colour_band,
+    y_range=None,
+):
+    fig = go.Figure()
 
-st.markdown(
-    """
-    This dashboard summarises **employment, unemployment and economic inactivity**  
-    for people aged 16–64 in **Kirklees**, using the *Annual Population Survey (APS)*.
-
-    The aim is explanatory: to show that **economic (in)activity has been broadly
-    comparable over time**, with only gradual shifts rather than sharp breaks.
-    """
-)
-
-st.markdown("---")
-
-# -------------------------------------------------------------------
-# HIGH-LEVEL CHART: THREE RATES OVER TIME
-# -------------------------------------------------------------------
-st.subheader("Employment, unemployment and economic inactivity over time")
-
-fig_rates = px.line(
-    rates_long,
-    x="Period",
-    y="Percent",
-    color="Indicator",
-    markers=True,
-    color_discrete_map=indicator_colors,
-)
-
-fig_rates.update_layout(
-    title="Kirklees, age 16–64 – APS 12-month periods",
-    xaxis_title="12-month APS period",
-    yaxis_title="Percent of working-age population",
-    template="simple_white",
-    font=dict(family="Arial", size=13),
-    legend_title="Indicator",
-    plot_bgcolor="#FFFFFF",
-    paper_bgcolor="#FFFFFF",
-    margin=dict(l=60, r=20, t=80, b=90),
-)
-
-fig_rates.update_yaxes(
-    range=[0, 80],
-    ticks="outside",
-    dtick=10,
-    showgrid=True,
-    gridcolor=ONS_LIGHT_GREY,
-    zeroline=False,
-)
-fig_rates.update_xaxes(
-    tickangle=-35,
-    tickfont=dict(size=11),
-    showgrid=False,
-)
-
-st.plotly_chart(fig_rates, use_container_width=True)
-
-col_a, col_b = st.columns(2)
-with col_a:
-    st.markdown(
-        """
-        **Key points**
-
-        - Employment has moved between **around 70% and mid-70s**.  
-        - Unemployment remains **low in absolute terms**, mostly between **2–6%**.  
-        - Economic inactivity sits in the **mid-20% range for most of the period**.
-        """
+    # CI band (lower then upper, filled)
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=low,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip",
+        )
     )
-with col_b:
-    st.markdown(
-        """
-        These patterns suggest **no dramatic break** in local labour-market conditions over  
-        the last decade. Changes are **gradual and within a relatively narrow band**, which  
-        is important context when interpreting outcomes for local programmes such as TLG.
-        """
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=high,
+            mode="lines",
+            line=dict(width=0),
+            fill="tonexty",
+            fillcolor=colour_band,
+            name="95% CI",
+            hoverinfo="skip",
+        )
     )
 
-st.markdown("---")
+    # Central estimate line
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=y,
+            mode="lines+markers",
+            line=dict(color=colour_line, width=3),
+            marker=dict(size=6),
+            name="Estimate",
+        )
+    )
 
-# -------------------------------------------------------------------
-# FOCUSED CHART: ECONOMIC INACTIVITY WITH CONFIDENCE BANDS
-# -------------------------------------------------------------------
-st.subheader("Economic inactivity: stable within a band, with a recent fall")
-
-fig_inact = go.Figure()
-
-# Confidence band
-fig_inact.add_trace(
-    go.Scatter(
-        x=pd.concat([df["Period"], df["Period"][::-1]]),
-        y=pd.concat([df["inact_high"], df["inact_low"][::-1]]),
-        fill="toself",
-        fillcolor="rgba(111,119,123,0.2)",  # light grey band
-        line=dict(color="rgba(255,255,255,0)"),
-        hoverinfo="skip",
+    fig.update_layout(
+        title=title,
+        template="simple_white",
+        height=350,
+        margin=dict(l=40, r=20, t=60, b=60),
+        xaxis=dict(
+            title="12-month APS period",
+            tickangle=45,
+            showgrid=False,
+        ),
+        yaxis=dict(
+            title="Percent of working-age population",
+            range=y_range,
+            gridcolor="#D8DDE0",
+            zeroline=False,
+        ),
         showlegend=False,
     )
-)
 
-# Central line
-fig_inact.add_trace(
-    go.Scatter(
-        x=df["Period"],
-        y=df["inact_pct"],
-        mode="lines+markers",
-        name="Economic inactivity rate (16–64)",
-        line=dict(color=ONS_GREY, width=3),
-        marker=dict(size=7),
+    return fig
+
+
+# -------------------------------------------------------
+# THREE GRAPHS SIDE BY SIDE
+# -------------------------------------------------------
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    fig_emp = make_ci_chart(
+        x=df["Period_short"],
+        y=df["emp_pct"],
+        low=df["emp_low"],
+        high=df["emp_high"],
+        title="Employment rate (16–64)",
+        colour_line="#12436D",           # ONS dark blue
+        colour_band="rgba(18,67,109,0.15)",
+        y_range=[60, 80],
     )
-)
+    st.plotly_chart(fig_emp, use_container_width=True)
 
-fig_inact.update_layout(
-    title="Economic inactivity rate with 95% confidence intervals – Kirklees, 16–64",
-    xaxis_title="12-month APS period",
-    yaxis_title="Percent of working-age population",
-    template="simple_white",
-    font=dict(family="Arial", size=13),
-    plot_bgcolor="#FFFFFF",
-    paper_bgcolor="#FFFFFF",
-    margin=dict(l=60, r=20, t=80, b=90),
-)
+with col2:
+    fig_unemp = make_ci_chart(
+        x=df["Period_short"],
+        y=df["unemp_pct"],
+        low=df["unemp_low"],
+        high=df["unemp_high"],
+        title="Unemployment rate (16–64)",
+        colour_line="#D4351C",           # ONS red
+        colour_band="rgba(212,53,28,0.15)",
+        y_range=[0, 8],
+    )
+    st.plotly_chart(fig_unemp, use_container_width=True)
 
-fig_inact.update_yaxes(
-    range=[15, 30],
-    ticks="outside",
-    dtick=5,
-    showgrid=True,
-    gridcolor=ONS_LIGHT_GREY,
-    zeroline=False,
-)
-fig_inact.update_xaxes(
-    tickangle=-35,
-    tickfont=dict(size=11),
-    showgrid=False,
-)
+with col3:
+    fig_inact = make_ci_chart(
+        x=df["Period_short"],
+        y=df["inactive_pct"],
+        low=df["inactive_low"],
+        high=df["inactive_high"],
+        title="Economic inactivity rate (16–64)",
+        colour_line="#6B6E72",           # ONS grey
+        colour_band="rgba(107,110,114,0.15)",
+        y_range=[15, 30],
+    )
+    st.plotly_chart(fig_inact, use_container_width=True)
 
-st.plotly_chart(fig_inact, use_container_width=True)
-
+# -------------------------------------------------------
+# SOURCE NOTE (minimal text)
+# -------------------------------------------------------
 st.markdown(
     """
-    The shaded band shows the **95% confidence interval** around the estimated inactivity rate.
-
-    - For most of the period, inactivity sits between **about 24% and 26%**,  
-      with overlapping confidence intervals from year to year.  
-    - The most recent period shows a **modest fall towards roughly 20%**, but still  
-      within a plausible range given sampling variation.
-
-    Overall, the evidence points to **broadly comparable levels of economic inactivity over time**,  
-    rather than a structural break coinciding with any single local intervention.
+    **Source:** Annual Population Survey (APS), ONS.  
+    12-month periods ending June; estimates for Kirklees local authority, age 16–64.  
+    Shaded bands show ±95% confidence intervals around the percentage estimates.
     """
 )
-
-st.markdown("---")
-
-# -------------------------------------------------------------------
-# FOOTNOTE / SOURCE
-# -------------------------------------------------------------------
-st.markdown(
-    """
-    <p style="font-size:12px; color:#6F777B;">
-    Source: Annual Population Survey (APS), ONS – Crown Copyright Reserved.  
-    Notes: APS estimates are weighted to 2018-based population projections.
-    Rates are robust; levels and changes in levels should be interpreted with caution,
-    particularly from 2019–20 onwards.
-    </p>
-    """,
-    unsafe_allow_html=True,
-)
-
-

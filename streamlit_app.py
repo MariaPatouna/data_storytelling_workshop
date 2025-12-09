@@ -500,7 +500,7 @@ with col3:
 # TABS FOR STRANDS
 # -------------------------------------------------------------------
 tab_qual, tab_survey, tab_quant, tab_vfi = st.tabs(
-    ["📋 Qualitative evaluation", "📊 Survey (Likert)", "📈 Quantitative impact", "💷 Value for Investment"]
+    ["📋 Qualitative evaluation", "📊 Longitudinal Survey", "📈 Quantitative impact", "💷 Value for Investment"]
 )
 
 # ------------------------ QUALITATIVE TAB ---------------------------

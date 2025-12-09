@@ -61,6 +61,73 @@ ACCELERATORS = [
     "AI at the frontline x Barnsley",
 ]
 
+# Approximate coordinates for each accelerator place
+ACCELERATOR_GEO = {
+    "Best Start in Life (BSIL) x Northumberland": {
+        "Place": "Northumberland",
+        "lat": 55.1667,
+        "lon": -2.0000,
+    },
+    "Best Start in Life (BSIL) x Manchester": {
+        "Place": "Manchester",
+        "lat": 53.4808,
+        "lon": -2.2426,
+    },
+    "Neighbourhood health x Plymouth": {
+        "Place": "Plymouth",
+        "lat": 50.3755,
+        "lon": -4.1427,
+    },
+    "Neighbourhood health x Liverpool": {
+        "Place": "Liverpool",
+        "lat": 53.4084,
+        "lon": -2.9916,
+    },
+    "Neighbourhood health x Essex": {
+        "Place": "Essex (Chelmsford)",
+        "lat": 51.7360,
+        "lon": 0.4790,
+    },
+    "Economic inactivity x Wakefield": {
+        "Place": "Wakefield",
+        "lat": 53.6829,
+        "lon": -1.4969,
+    },
+    "Violence Against Women and Girls (VAWG) x London": {
+        "Place": "London",
+        "lat": 51.5074,
+        "lon": -0.1278,
+    },
+    "SEND transitions x Sandwell": {
+        "Place": "Sandwell",
+        "lat": 52.5050,
+        "lon": -2.0110,
+    },
+    "SEND transition x Nottingham": {
+        "Place": "Nottingham",
+        "lat": 52.9548,
+        "lon": -1.1581,
+    },
+    "AI at the frontline x Barnsley": {
+        "Place": "Barnsley",
+        "lat": 53.5526,
+        "lon": -1.4797,
+    },
+}
+
+# Build a small DF for the map
+geo_rows = []
+for acc, info in ACCELERATOR_GEO.items():
+    geo_rows.append(
+        {
+            "Accelerator": acc,
+            "Place": info["Place"],
+            "lat": info["lat"],
+            "lon": info["lon"],
+        }
+    )
+geo_df = pd.DataFrame(geo_rows)
+
 SURVEY_WAVES = ["Wave 1", "Wave 2", "Wave 3"]
 
 # ONS-style diverging Likert palette (approximate)
@@ -336,6 +403,41 @@ st.markdown(
 )
 
 st.markdown("---")
+
+# -------------------------------------------------------------------
+# MAP OF ENGLAND – TLG SITES
+# -------------------------------------------------------------------
+st.markdown("### Where is this accelerator located?")
+
+map_df = geo_df.copy()
+map_df["Selected"] = map_df["Accelerator"] == selected_accelerator
+map_df["Marker_size"] = map_df["Selected"].map({True: 18, False: 10})
+
+fig_map = px.scatter_mapbox(
+    map_df,
+    lat="lat",
+    lon="lon",
+    hover_name="Place",
+    hover_data={"Accelerator": True, "Selected": False, "lat": False, "lon": False},
+    color="Selected",
+    size="Marker_size",
+    size_max=20,
+    zoom=5,
+    center={"lat": 53.5, "lon": -2.0},
+    mapbox_style="open-street-map",
+    color_discrete_map={
+        True: "#005F83",   # highlighted site
+        False: "#7FB3D5",  # other TLG sites
+    },
+)
+
+fig_map.update_layout(
+    margin={"r": 0, "t": 0, "l": 0, "b": 0},
+    height=400,
+    legend_title="Selected accelerator",
+)
+
+st.plotly_chart(fig_map, use_container_width=True)
 
 # -------------------------------------------------------------------
 # TOP SUMMARY METRICS (DUMMY)

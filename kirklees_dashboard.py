@@ -48,13 +48,13 @@ df = pd.DataFrame(
     }
 )
 
-# split at 2021–22
+# Split point: 2021–22 (KBOP starts)
 split_period = "2021-22"
 split_idx = df.index[df["Period"] == split_period][0]
 
 # ONS colours
-PRE_COLOUR = "#959495"
-CURR_COLOUR = "#206095"
+PRE_COLOUR = "#959495"   # Vintage grey
+CURR_COLOUR = "#206095"  # Ocean blue
 PRE_SHADE = "rgba(149,148,149,0.25)"
 CURR_SHADE = "rgba(32,96,149,0.25)"
 
@@ -77,7 +77,8 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
     curr_low = ci_low.iloc[split_idx:]
     curr_high = ci_high.iloc[split_idx:]
 
-    # pre CI
+    # ---------- CI bands ----------
+    # Pre-KBOP CI
     fig.add_trace(
         go.Scatter(
             x=list(pre["Period"]) + list(pre["Period"][::-1]),
@@ -90,7 +91,7 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
         )
     )
 
-    # post CI
+    # KBOP CI
     fig.add_trace(
         go.Scatter(
             x=list(curr["Period"]) + list(curr["Period"][::-1]),
@@ -103,29 +104,32 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
         )
     )
 
-    # pre-KBOP line — NO MARKERS
+    # ---------- Lines (no markers) ----------
+    # Pre-KBOP line
     fig.add_trace(
         go.Scatter(
             x=pre["Period"],
             y=pre[value_col],
             mode="lines",
             line=dict(color=PRE_COLOUR, width=3),
+            marker=dict(size=0),          # ensure NO markers
             name="Pre-KBOP period (2015–16 to 2020–21)",
         )
     )
 
-    # KBOP line — NO MARKERS
+    # KBOP line
     fig.add_trace(
         go.Scatter(
             x=curr["Period"],
             y=curr[value_col],
             mode="lines",
             line=dict(color=CURR_COLOUR, width=3),
+            marker=dict(size=0),          # ensure NO markers
             name="KBOP period (2021–22 to 2024–25)",
         )
     )
 
-    # Average line
+    # ---------- Average dashed line ----------
     avg_val = df[value_col].mean()
     fig.add_hline(
         y=avg_val,
@@ -136,6 +140,7 @@ def make_metric_figure(df, value_col, ci_col, title, y_min, y_max):
         annotation_font=dict(size=11, color="#595959"),
     )
 
+    # ---------- Layout ----------
     fig.update_layout(
         title=title,
         title_x=0.0,
@@ -180,17 +185,38 @@ st.markdown(
 )
 
 st.plotly_chart(
-    make_metric_figure(df, "Employment_pct", "Employment_ci", "Employment rate (16–64)", 60, 80),
+    make_metric_figure(
+        df,
+        "Employment_pct",
+        "Employment_ci",
+        "Employment rate (16–64)",
+        60,
+        80,
+    ),
     use_container_width=True,
 )
 
 st.plotly_chart(
-    make_metric_figure(df, "Unemp_pct", "Unemp_ci", "Unemployment rate (16–64)", 0, 8),
+    make_metric_figure(
+        df,
+        "Unemp_pct",
+        "Unemp_ci",
+        "Unemployment rate (16–64)",
+        0,
+        8,
+    ),
     use_container_width=True,
 )
 
 st.plotly_chart(
-    make_metric_figure(df, "Inact_pct", "Inact_ci", "Economic inactivity rate (16–64)", 15, 30),
+    make_metric_figure(
+        df,
+        "Inact_pct",
+        "Inact_ci",
+        "Economic inactivity rate (16–64)",
+        15,
+        30,
+    ),
     use_container_width=True,
 )
 

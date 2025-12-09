@@ -184,46 +184,57 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Option to zoom the unemployment chart
-zoom_unemp = st.checkbox("Zoom y-axis for unemployment (0–10%)", value=True)
+# Global zoom toggle for ALL graphs
+zoom_all = st.checkbox(
+    "Use zoomed y-axis for each chart (otherwise 0–100%)", value=True
+)
 
-# Employment – 0–100%
+if zoom_all:
+    # Tight, metric-specific ranges
+    emp_range = (60, 80)
+    unemp_range = (0, 10)
+    inact_range = (15, 30)
+else:
+    # Common 0–100% range
+    emp_range = (0, 100)
+    unemp_range = (0, 100)
+    inact_range = (0, 100)
+
+# Employment
 st.plotly_chart(
     make_metric_figure(
         df,
         "Employment_pct",
         "Employment_ci",
         "Employment rate (16–64)",
-        0,
-        100,
+        emp_range[0],
+        emp_range[1],
     ),
     use_container_width=True,
 )
 
-# Unemployment – either 0–10% (zoom) or 0–100% for comparability
-unemp_y_max = 10 if zoom_unemp else 100
-
+# Unemployment
 st.plotly_chart(
     make_metric_figure(
         df,
         "Unemp_pct",
         "Unemp_ci",
         "Unemployment rate (16–64)",
-        0,
-        unemp_y_max,
+        unemp_range[0],
+        unemp_range[1],
     ),
     use_container_width=True,
 )
 
-# Economic inactivity – 0–100%
+# Economic inactivity
 st.plotly_chart(
     make_metric_figure(
         df,
         "Inact_pct",
         "Inact_ci",
         "Economic inactivity rate (16–64)",
-        0,
-        100,
+        inact_range[0],
+        inact_range[1],
     ),
     use_container_width=True,
 )

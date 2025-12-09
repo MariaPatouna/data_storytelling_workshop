@@ -12,12 +12,6 @@ st.set_page_config(
 )
 
 st.markdown(
-    "<h1 style='text-align:left; color:#1B4F72;'>"
-    "Employment, unemployment and economic inactivity over time"
-    "</h1>",
-    unsafe_allow_html=True,
-)
-st.markdown(
     "<h3 style='text-align:left; color:#555555;'>"
     "Kirklees, age 16–64 – 12-month APS periods"
     "</h3>",
@@ -25,7 +19,7 @@ st.markdown(
 )
 
 # -------------------------------------------------------------
-# DATA
+# DATA (same as before)
 # -------------------------------------------------------------
 data = {
     "Date": [
@@ -52,17 +46,15 @@ data = {
         "2023–24",
         "2024–25",
     ],
-    "emp_percent": [70.0, 70.7, 70.5, 71.9, 73.6, 69.9, 73.7, 72.7, 74.1, 76.4],
-    "emp_conf":    [3.1,  3.0,  3.0,  2.8,  3.0,  3.4,  3.4,  3.9,  4.0,  3.2],
-    "unemp_percent": [5.1, 6.4, 4.5, 4.1, 1.8, 5.9, 2.3, 4.8, 3.3, 5.1],
-    "unemp_conf":    [1.7, 1.9, 1.6, 1.5, 1.0, 2.0, 1.3, 2.2, 1.9, 1.8],
+    "emp_percent":   [70.0, 70.7, 70.5, 71.9, 73.6, 69.9, 73.7, 72.7, 74.1, 76.4],
+    "emp_conf":      [3.1,  3.0,  3.0,  2.8,  3.0,  3.4,  3.4,  3.9,  4.0,  3.2],
+    "unemp_percent": [5.1,  6.4,  4.5,  4.1,  1.8,  5.9,  2.3,  4.8,  3.3,  5.1],
+    "unemp_conf":    [1.7,  1.9,  1.6,  1.5,  1.0,  2.0,  1.3,  2.2,  1.9,  1.8],
     "inact_percent": [26.2, 24.4, 26.2, 25.0, 25.0, 25.7, 24.6, 23.6, 23.3, 19.5],
     "inact_conf":    [3.0,  2.9,  2.9,  2.7,  3.0,  3.3,  3.3,  3.8,  3.9,  3.0],
 }
-
 df = pd.DataFrame(data)
 
-# CI bounds
 for prefix in ["emp", "unemp", "inact"]:
     df[f"{prefix}_lower"] = df[f"{prefix}_percent"] - df[f"{prefix}_conf"]
     df[f"{prefix}_upper"] = df[f"{prefix}_percent"] + df[f"{prefix}_conf"]
@@ -70,15 +62,15 @@ for prefix in ["emp", "unemp", "inact"]:
 # -------------------------------------------------------------
 # COLOURS & SPLIT POINT
 # -------------------------------------------------------------
-PREV_COLOUR = "#959495"     # vintage grey
-CURR_COLOUR = "#206095"     # ocean blue
+PREV_COLOUR = "#959495"    # vintage grey
+CURR_COLOUR = "#206095"    # ocean blue
 PREV_CI = "rgba(149,148,149,0.25)"
 CURR_CI = "rgba(32,96,149,0.25)"
 
 split_idx = df.index[df["Date"] == "Jul 2020-Jun 2021"][0]
 
 # -------------------------------------------------------------
-# HELPER TO BUILD A FIGURE
+# HELPER WITH CUSTOM LEGEND LABELS
 # -------------------------------------------------------------
 def make_metric_figure(
     df: pd.DataFrame,
@@ -86,16 +78,17 @@ def make_metric_figure(
     lower_col: str,
     upper_col: str,
     title: str,
+    legend_prev: str,
+    legend_curr: str,
     y_range=None,
 ):
     mean_val = df[value_col].mean()
-
     prev = df.iloc[: split_idx + 1]
     curr = df.iloc[split_idx:]
 
     fig = go.Figure()
 
-    # ---- CI band for previous periods (grey) ----
+    # --- CI band previous (grey) ---
     if len(prev) > 1:
         x_prev = list(prev["Period_short"]) + list(prev["Period_short"][::-1])
         y_prev = list(prev[upper_col]) + list(prev[lower_col][::-1])
@@ -107,13 +100,13 @@ def make_metric_figure(
                 line=dict(width=0),
                 fill="toself",
                 fillcolor=PREV_CI,
-                name="95% confidence interval (previous)",
+                name="95% CI (pre-KBOP)",
                 hoverinfo="skip",
                 showlegend=False,
             )
         )
 
-    # ---- CI band for current periods (blue) ----
+    # --- CI band current (blue) ---
     if len(curr) > 1:
         x_curr = list(curr["Period_short"]) + list(curr["Period_short"][::-1])
         y_curr = list(curr[upper_col]) + list(curr[lower_col][::-1])
@@ -125,13 +118,13 @@ def make_metric_figure(
                 line=dict(width=0),
                 fill="toself",
                 fillcolor=CURR_CI,
-                name="95% confidence interval (current)",
+                name="95% CI (KBOP period)",
                 hoverinfo="skip",
                 showlegend=False,
             )
         )
 
-    # ---- previous periods line (grey) ----
+    # --- previous periods line (grey) shown in legend ---
     fig.add_trace(
         go.Scatter(
             x=prev["Period_short"],
@@ -139,13 +132,13 @@ def make_metric_figure(
             mode="lines+markers",
             line=dict(color=PREV_COLOUR, width=3),
             marker=dict(size=6),
-            name="Previous periods",
+            name=legend_prev,
             hovertemplate="%{x}<br>%{y:.1f}%<extra></extra>",
-            showlegend=False,  # keep legend simple
+            showlegend=True,
         )
     )
 
-    # ---- current periods line (blue) ----
+    # --- current periods line (blue) shown in legend ---
     fig.add_trace(
         go.Scatter(
             x=curr["Period_short"],
@@ -153,12 +146,13 @@ def make_metric_figure(
             mode="lines+markers",
             line=dict(color=CURR_COLOUR, width=3),
             marker=dict(size=6),
-            name="Current periods",
+            name=legend_curr,
             hovertemplate="%{x}<br>%{y:.1f}%<extra></extra>",
+            showlegend=True,
         )
     )
 
-    # ---- average dashed line ----
+    # --- average dashed line ---
     fig.add_hline(
         y=mean_val,
         line_dash="dash",
@@ -183,6 +177,14 @@ def make_metric_figure(
         plot_bgcolor="#FFFFFF",
         paper_bgcolor="#FFFFFF",
         hovermode="x unified",
+        legend=dict(
+            orientation="v",
+            x=1.02,
+            xanchor="left",
+            y=1,
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="rgba(0,0,0,0)",
+        ),
     )
 
     if y_range is not None:
@@ -191,7 +193,7 @@ def make_metric_figure(
     return fig
 
 # -------------------------------------------------------------
-# CHARTS (VERTICAL STACK)
+# BUILD THREE CHARTS WITH CLEAR LEGENDS
 # -------------------------------------------------------------
 fig_emp = make_metric_figure(
     df,
@@ -199,6 +201,8 @@ fig_emp = make_metric_figure(
     "emp_lower",
     "emp_upper",
     "Employment rate (16–64)",
+    legend_prev="Pre-KBOP period employment rate (2015–16 to 2020–21)",
+    legend_curr="KBOP period employment rate (2021–22 to 2024–25)",
     y_range=[60, 80],
 )
 
@@ -208,6 +212,8 @@ fig_unemp = make_metric_figure(
     "unemp_lower",
     "unemp_upper",
     "Unemployment rate (16–64)",
+    legend_prev="Pre-KBOP period unemployment rate (2015–16 to 2020–21)",
+    legend_curr="KBOP period unemployment rate (2021–22 to 2024–25)",
     y_range=[0, 8],
 )
 
@@ -217,6 +223,8 @@ fig_inact = make_metric_figure(
     "inact_lower",
     "inact_upper",
     "Economic inactivity rate (16–64)",
+    legend_prev="Pre-KBOP period inactivity rate (2015–16 to 2020–21)",
+    legend_curr="KBOP period inactivity rate (2021–22 to 2024–25)",
     y_range=[15, 30],
 )
 
@@ -224,13 +232,9 @@ st.plotly_chart(fig_emp, use_container_width=True)
 st.plotly_chart(fig_unemp, use_container_width=True)
 st.plotly_chart(fig_inact, use_container_width=True)
 
-# -------------------------------------------------------------
-# FOOTNOTE / SOURCE
-# -------------------------------------------------------------
 st.markdown(
     """
-**Source:** Annual Population Survey, Office for National Statistics (APS 12-month periods).  
-95% confidence intervals shown as shaded bands.  
-[ONS visualisation guidance](https://ons-design.notion.site/314386f7916e497baae8118a782911f5?v=d7efdd82e8884f548a6c79eda2d0b2e4&source=copy_link)
+**Source:** Annual Population Survey, ONS (12-month APS periods).  
+95% confidence intervals shown as shaded bands.
 """
 )

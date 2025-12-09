@@ -386,8 +386,7 @@ if theme == "Dark":
 
 # Sidebar info
 st.sidebar.info(
-    "Dummy dashboard illustrating how the TLG evaluation can be structured "
-    "across qualitative, survey (Likert), quantitative, and value-for-investment strands."
+    "Dummy dashboard illustrating how the TLG evaluation"
 )
 
 # -------------------------------------------------------------------

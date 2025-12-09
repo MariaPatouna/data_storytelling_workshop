@@ -563,7 +563,7 @@ with tab_qual:
 
 # ------------------------ SURVEY TAB (LIKERT) -----------------------
 with tab_survey:
-    st.subheader("Survey of ways of working – Likert distribution")
+    st.subheader("Understanding of ways of working")
 
     # Wave selector INSIDE the tab
     selected_wave = st.radio(
